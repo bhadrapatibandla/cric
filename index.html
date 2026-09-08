@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Bhadra Patibandla — Cricket Player Portfolio. 176 matches, 2,223 runs, 48 catches across 20 tournaments.">
+  <title>Bhadra Patibandla | Cricket Portfolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-inner">
+      <a class="nav-logo" href="#">
+        <span class="logo-icon">🏏</span>
+        <span class="logo-text">BHADRA<span class="logo-dot">.</span>CRICKET</span>
+      </a>
+      <div class="nav-links">
+        <a href="#overview">Overview</a>
+        <a href="#yearly">Growth</a>
+        <a href="#charts">Analytics</a>
+        <a href="#highlights">Highlights</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#tournaments">Tournaments</a>
+        <a href="#stats">Stats</a>
+        <a href="#profile">Profile</a>
+      </div>
+      <button class="nav-toggle" id="navToggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero" id="hero">
+    <div class="hero-bg-image" aria-hidden="true"></div>
+    <canvas class="hero-canvas" id="heroCanvas"></canvas>
+    <img class="hero-silhouette" src="static/3.jpeg" alt="" aria-hidden="true">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        SanAntonio Road Runners U11
+      </div>
+      <h1 class="hero-name">
+        <span class="name-first">Bhadra</span>
+        <span class="name-last">Patibandla</span>
+      </h1>
+      <p class="hero-role">Wicket Keeper · Right Hand Batter · Leg Spin Bowler</p>
+      <div class="hero-stats">
+        <div class="hs-item" data-count="176" data-suffix="">
+          <span class="hs-num" id="c1">0</span>
+          <span class="hs-label">Matches</span>
+        </div>
+        <div class="hs-divider"></div>
+        <div class="hs-item" data-count="2223" data-suffix="">
+          <span class="hs-num" id="c2">0</span>
+          <span class="hs-label">Career Runs</span>
+        </div>
+        <div class="hs-divider"></div>
+        <div class="hs-item" data-count="48" data-suffix="">
+          <span class="hs-num" id="c3">0</span>
+          <span class="hs-label">Catches</span>
+        </div>
+        <div class="hs-divider"></div>
+        <div class="hs-item" data-count="20" data-suffix="">
+          <span class="hs-num" id="c4">0</span>
+          <span class="hs-label">Tournaments</span>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <a href="#charts" class="btn btn-primary">View Analytics</a>
+        <a href="#tournaments" class="btn btn-ghost">All Tournaments</a>
+      </div>
+    </div>
+    <div class="hero-scroll-hint">
+      <span>Scroll to explore</span>
+      <div class="scroll-arrow"></div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- OVERVIEW CARDS -->
+    <section id="overview" class="section">
+      <div class="container">
+        <div class="section-label">Career Snapshot</div>
+        <h2 class="section-title">Performance at a glance</h2>
+        <div class="overview-grid" id="overviewGrid"></div>
+      </div>
+    </section>
+
+    <!-- YEAR BY YEAR -->
+    <section id="yearly" class="section">
+      <div class="container">
+        <div class="section-label">Career Progression</div>
+        <h2 class="section-title">Year by Year Growth</h2>
+
+        <!-- Metric toggle tabs -->
+        <div class="yearly-tabs">
+          <button class="ytab active" data-metric="runs">Runs</button>
+          <button class="ytab" data-metric="avg">Average</button>
+          <button class="ytab" data-metric="sr">Strike Rate</button>
+          <button class="ytab" data-metric="matches">Matches</button>
+        </div>
+
+        <!-- Growth chart -->
+        <div class="yearly-chart-wrap">
+          <canvas id="yearlyChart"></canvas>
+        </div>
+
+        <!-- Year cards -->
+        <div class="yearly-cards" id="yearlyCards"></div>
+
+        <!-- Growth callout -->
+        <div class="growth-callout" id="growthCallout"></div>
+      </div>
+    </section>
+
+    <!-- PARALLAX DIVIDER -->
+    <div class="parallax-divider" aria-hidden="true">
+      <div class="parallax-overlay"></div>
+      <div class="parallax-text">
+        <span>176 Matches</span>
+        <span class="pd-dot">·</span>
+        <span>2,223 Runs</span>
+        <span class="pd-dot">·</span>
+        <span>20 Tournaments</span>
+        <span class="pd-dot">·</span>
+        <span>48 Catches</span>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <section id="charts" class="section section-dark">
+      <div class="container">
+        <div class="section-label">Analytics</div>
+        <h2 class="section-title">Performance insights</h2>
+
+        <div class="chart-tabs">
+          <button class="ctab active" data-chart="runs">Runs by Tournament</button>
+          <button class="ctab" data-chart="avg">Batting Average</button>
+          <button class="ctab" data-chart="sr">Strike Rate</button>
+          <button class="ctab" data-chart="bowling">Bowling Economy</button>
+          <button class="ctab" data-chart="radar">All-Round Radar</button>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="mainChart"></canvas>
+        </div>
+
+        <div class="chart-insight" id="chartInsight"></div>
+      </div>
+    </section>
+
+    <!-- HIGHLIGHTS -->
+    <section id="highlights" class="section">
+      <div class="container">
+        <div class="section-label">Match Footage</div>
+        <h2 class="section-title">Highlights</h2>
+        <div class="highlights-grid">
+
+          <div class="highlight-card">
+            <div class="highlight-video-wrap">
+              <video
+                src="static/batting-video1.mp4"
+                autoplay
+                loop
+                muted
+                playsinline
+                preload="auto"
+                aria-label="Bhadra Patibandla batting highlight reel 1"
+              ></video>
+            </div>
+            <div class="highlight-info">
+              <span class="highlight-tag">Batting</span>
+              <h3 class="highlight-title">Highlight Reel · Vol. 1</h3>
+              <p class="highlight-sub">Top-order innings footage from competitive matches</p>
+            </div>
+          </div>
+
+          <div class="highlight-card">
+            <div class="highlight-video-wrap">
+              <video
+                src="static/batting-video2.mp4"
+                autoplay
+                loop
+                muted
+                playsinline
+                preload="auto"
+                aria-label="Bhadra Patibandla batting highlight reel 2"
+              ></video>
+            </div>
+            <div class="highlight-info">
+              <span class="highlight-tag">Batting</span>
+              <h3 class="highlight-title">Highlight Reel · Vol. 2</h3>
+              <p class="highlight-sub">More innings showcasing technique and shot selection</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- GALLERY -->
+    <section id="gallery" class="section section-dark">
+      <div class="container">
+        <div class="section-label">On the Field</div>
+        <h2 class="section-title">Gallery</h2>
+        <div class="gallery-grid">
+
+          <div class="gallery-item gallery-item--wide">
+            <img src="static/tophy.jpeg" alt="Bhadra Patibandla receiving a tournament trophy" loading="lazy">
+            <div class="gallery-caption">
+              <span class="gallery-tag">Achievement</span>
+              <p>Tournament trophy presentation — 2026</p>
+            </div>
+          </div>
+
+          <div class="gallery-item">
+            <img src="static/1.jpg" alt="Cricket bat and red leather ball on grass" loading="lazy">
+            <div class="gallery-caption">
+              <span class="gallery-tag">Equipment</span>
+              <p>The tools of the trade</p>
+            </div>
+          </div>
+
+          <div class="gallery-item">
+            <img src="static/4.jpg" alt="Cricket batter silhouette with flaming ball" loading="lazy">
+            <div class="gallery-caption">
+              <span class="gallery-tag">Batting</span>
+              <p>Power at the crease</p>
+            </div>
+          </div>
+
+          <div class="gallery-item gallery-item--feature">
+            <img src="static/2.jpg" alt="Glowing neon cricket batter in action" loading="lazy">
+            <div class="gallery-caption">
+              <span class="gallery-tag">Action</span>
+              <p>Pure batting form</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- TOURNAMENTS -->
+    <section id="tournaments" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div>
+            <div class="section-label">Tournament Coverage</div>
+            <h2 class="section-title">20 Competitions</h2>
+          </div>
+          <div class="tournament-filters">
+            <input type="search" id="tourneySearch" class="filter-input" placeholder="Search tournaments…">
+            <select id="formatFilter" class="filter-select">
+              <option value="">All Formats</option>
+              <option value="T20">T20</option>
+              <option value="1 DAY">1 Day</option>
+              <option value="YOUTH">Youth</option>
+              <option value="TEST">Test</option>
+            </select>
+          </div>
+        </div>
+        <div class="tournament-grid" id="tournamentGrid"></div>
+      </div>
+    </section>
+
+    <!-- STATS DEEP DIVE -->
+    <section id="stats" class="section section-dark">
+      <div class="container">
+        <div class="section-label">Detailed Statistics</div>
+        <h2 class="section-title">Batting, Bowling &amp; Keeping</h2>
+
+        <div class="stats-nav">
+          <button class="snav active" data-tab="batting">Batting</button>
+          <button class="snav" data-tab="bowling">Bowling</button>
+          <button class="snav" data-tab="keeping">Wicket Keeping</button>
+          <button class="snav" data-tab="career">Career Summary</button>
+        </div>
+
+        <div class="stats-panel" id="statsPanel"></div>
+      </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section id="profile" class="section">
+      <div class="container">
+        <div class="profile-layout">
+          <div class="profile-card">
+            <div class="profile-avatar">
+              <div class="avatar-ring"></div>
+              <div class="avatar-inner avatar-photo">
+                <img src="static/tophy.jpeg" alt="Bhadra Patibandla receiving a trophy in cricket whites" loading="lazy">
+              </div>
+              <div class="jersey-badge">#29</div>
+            </div>
+            <h3 class="profile-name">Bhadra Patibandla</h3>
+            <p class="profile-team">SanAntonio Road Runners U11</p>
+            <div class="profile-tags">
+              <span>🧤 Wicket Keeper</span>
+              <span>🏏 Top Order</span>
+              <span>🌀 Leg Spin</span>
+            </div>
+            <a href="https://cricclubs.com/DallasYouthCricketLeagueDYCLOfficial/viewPlayer.do?playerId=2772381&clubId=1001692" target="_blank" rel="noopener" class="cricclubs-link">
+              View on CricClubs ↗
+            </a>
+          </div>
+          <div class="profile-details" id="profileDetails"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="logo-icon">🏏</span>
+          <strong>Bhadra Patibandla</strong>
+          <span class="footer-sub">Cricket Portfolio</span>
+        </div>
+        <div class="footer-meta">
+          <span>176 matches · 20 tournaments</span>
+          <span>Data sourced from CricClubs</span>
+          <span>© <span id="year"></span></span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
