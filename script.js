@@ -1,161 +1,84 @@
-/* ============================================================
-   BHADRA PATIBANDLA — CRICKET PORTFOLIO  |  script.js
-   ============================================================ */
+/**
+ * script.js — Bhadra Patibandla Cricket Portfolio v2
+ * ════════════════════════════════════════════════════
+ * ES module. Imports data from data.js (local) which is replaced
+ * by live Firestore data via firebase-data.js when deployed.
+ *
+ * Boot order:
+ *   1. DOMContentLoaded fires → initNonData() (canvas, nav, footer)
+ *   2. 'dataReady' event fires → inject live data → initData()
+ *   3. If 'dataReady' never fires within 3s → initData() with local fallback
+ */
 
-// ── DATA ─────────────────────────────────────────────────────────────────────
-// CAREER and TOURNAMENTS are populated at runtime by firebase-data.js via the
-// 'firestoreReady' event. The values below are the static fallback — used if
-// Firestore is unreachable (network offline, Firebase config not yet set, etc.).
+import { PLAYER, CAREER, TOURNAMENTS, YEARLY } from './data.js';
 
-let CAREER = {
-  matches: 176, runs: 2223, wickets: 13, catches: 48,
-  avg: 24.43, sr: 65.69, hs: 90, fifties: 8, twentyFives: 21, ducks: 15,
-  fours: 180, sixes: 1, overs: '109.1', econ: 5.96, bowlAvg: 50.08,
-  tournaments: 20,
-  innings: 155, notOuts: 64, bowlInnings: 49, wides: 143
+// ── CHART.JS GLOBAL DEFAULTS ──────────────────────────────────────────────
+Chart.defaults.color = '#8ba3c7';
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+
+// ── SHARED CHART TOOLTIP STYLE ────────────────────────────────────────────
+const TOOLTIP = {
+  backgroundColor: '#0b1428',
+  titleColor: '#f0f5ff',
+  bodyColor: '#8ba3c7',
+  borderColor: 'rgba(255,255,255,0.1)',
+  borderWidth: 1,
+  padding: 12,
+  cornerRadius: 10,
 };
 
-const PROFILE = [
-  { label: 'Player Name',    value: 'Bhadra Patibandla' },
-  { label: 'CricClubs ID',   value: '2772381' },
-  { label: 'Current Team',   value: 'SanAntonio Road Runners U11' },
-  { label: 'Playing Role',   value: 'Wicket Keeper' },
-  { label: 'Jersey Number',  value: '#29' },
-  { label: 'Batting Style',  value: 'Right Hand Batter (Top Order)' },
-  { label: 'Bowling Style',  value: 'Right Arm Leg Spin' },
-  { label: 'Tournament Span','value': '2024 – 2026' },
-];
+const GRID = { color: 'rgba(255,255,255,0.05)' };
+const TICK = { color: '#4d6480', font: { size: 11 } };
 
-// Tournament summary — populated from Firestore; static values are fallback only
-let TOURNAMENTS = [
-  { name: 'Dallas Youth Cricket League (DYCL Official)', matches:12,  runs:197,  avg:21.89, sr:59.34, hs:87, wkts:0, econ:9.00, catches:10, fifties:1, format:'YOUTH/1DAY' },
-  { name: 'Cricket of San Antonio',                      matches:48,  runs:391,  avg:13.96, sr:48.94, hs:50, wkts:6, econ:6.75, catches:8,  fifties:1, format:'1DAY/T20'   },
-  { name: 'Houston Taped Ball Cricket',                  matches:2,   runs:8,    avg:null,  sr:42.11, hs:8,  wkts:0, econ:null, catches:0,  fifties:0, format:'T20'         },
-  { name: 'National Youth Cricket Tournament',           matches:7,   runs:192,  avg:48.00, sr:81.36, hs:59, wkts:0, econ:null, catches:0,  fifties:2, format:'1DAY'        },
-  { name: 'American Cricket League',                     matches:10,  runs:66,   avg:16.50, sr:45.83, hs:21, wkts:0, econ:10.0, catches:1,  fifties:0, format:'T20/1DAY'   },
-  { name: 'Austin Youth League',                         matches:4,   runs:50,   avg:50.00, sr:79.37, hs:48, wkts:0, econ:null, catches:0,  fifties:0, format:'YOUTH'       },
-  { name: 'Frisco Youth Cricket League',                 matches:3,   runs:33,   avg:16.50, sr:53.23, hs:19, wkts:0, econ:null, catches:0,  fifties:0, format:'1DAY'        },
-  { name: 'The Matches',                                 matches:1,   runs:10,   avg:10.00, sr:28.57, hs:10, wkts:0, econ:null, catches:0,  fifties:0, format:'1DAY'        },
-  { name: 'NTCAYouth',                                   matches:4,   runs:0,    avg:null,  sr:null,  hs:0,  wkts:0, econ:12.0, catches:0,  fifties:0, format:'1DAY'        },
-  { name: 'MLK JR Texas Cup',                            matches:8,   runs:147,  avg:29.40, sr:73.13, hs:67, wkts:0, econ:3.00, catches:3,  fifties:1, format:'1DAY/T20'   },
-  { name: 'USA Cricket Junior Pathway',                  matches:31,  runs:497,  avg:38.23, sr:84.38, hs:90, wkts:4, econ:2.20, catches:12, fifties:1, format:'T20/1DAY'   },
-  { name: 'ACL Test Series',                             matches:1,   runs:3,    avg:3.00,  sr:13.64, hs:2,  wkts:1, econ:3.00, catches:0,  fifties:0, format:'TEST'        },
-  { name: 'Lonestar Premier Cricket League (LPCL)',      matches:3,   runs:5,    avg:1.67,  sr:20.83, hs:5,  wkts:1, econ:6.50, catches:0,  fifties:0, format:'1DAY'        },
-  { name: 'TexasYouthPremierLeague',                     matches:0,   runs:0,    avg:null,  sr:null,  hs:0,  wkts:0, econ:null, catches:0,  fifties:0, format:'ZERO'        },
-  { name: 'AMLCA - Elite Jr Championship',               matches:8,   runs:46,   avg:6.57,  sr:46.00, hs:13, wkts:0, econ:null, catches:2,  fifties:0, format:'1DAY'        },
-  { name: 'Presidents Cup',                              matches:8,   runs:86,   avg:17.20, sr:100.0, hs:8,  wkts:1, econ:6.17, catches:1,  fifties:0, format:'T20'         },
-  { name: '22Yards League',                              matches:0,   runs:0,    avg:null,  sr:null,  hs:0,  wkts:0, econ:null, catches:0,  fifties:0, format:'ZERO'        },
-  { name: 'Austin Elite Youth Cricket League',           matches:9,   runs:224,  avg:74.67, sr:77.78, hs:50, wkts:0, econ:7.20, catches:2,  fifties:2, format:'T20'         },
-  { name: 'Austin Youth Cricket Consortium',             matches:13,  runs:209,  avg:69.67, sr:69.90, hs:44, wkts:0, econ:5.00, catches:7,  fifties:0, format:'YOUTH/1DAY/TEST' },
-  { name: 'Houston Invitational Tournament (HIT)',       matches:4,   runs:59,   avg:29.50, sr:69.41, hs:20, wkts:0, econ:1.50, catches:2,  fifties:0, format:'T20'         },
-];
+// ── LIVE DATA (starts as local, overwritten by Firestore if available) ────
+let DATA = { career: CAREER, tournaments: TOURNAMENTS, yearly: YEARLY };
 
-// Yearly progression — populated from Firestore; static values are fallback only
-let YEARLY_STATS = [
-  {
-    year: 2024, matches: 22, innings: 18,
-    notOuts: 7,  runs: 207,  balls: 356,
-    avg: 18.82,  sr: 58.15, hs: 57,
-    fifties: 1,  twentyFives: 2, ducks: 3,
-    fours: 8,    sixes: 0,
-    wickets: 0,  catches: 1,
-    overs: '9.0', runsConc: 80, econ: 8.89,
-    tournaments: 5,
-    tournamentNames: ['DYCL','NYCT','ACL','Austin Youth','USAC'],
-  },
-  {
-    year: 2025, matches: 33, innings: 30,
-    notOuts: 11, runs: 385,  balls: 501,
-    avg: 20.26,  sr: 76.85, hs: 59,
-    fifties: 1,  twentyFives: 1, ducks: 4,
-    fours: 28,   sixes: 0,
-    wickets: 0,  catches: 8,
-    overs: '2.7', runsConc: 7, econ: 2.63,
-    tournaments: 10,
-    tournamentNames: ['DYCL','NYCT','ACL','Frisco YCL','The Matches','MLK Cup','AMLCA','Presidents Cup','Austin Consortium','HIT'],
-  },
-  {
-    year: 2026, matches: 54, innings: 46,
-    notOuts: 20, runs: 1054, balls: 1088,
-    avg: 40.54,  sr: 96.88, hs: 90,
-    fifties: 3,  twentyFives: 15, ducks: 4,
-    fours: 103,  sixes: 1,
-    wickets: 0,  catches: 7,
-    overs: '1.0', runsConc: 17, econ: 17.00,
-    tournaments: 5,
-    tournamentNames: ['DYCL','MLK Cup','USAC','Presidents Cup','Austin Consortium'],
-  },
-];
-// Columns: [Tournament, Format, M, Inn, NO, Runs, Balls, Avg, SR, HS, 50s]
-const BATTING_ROWS = [
-  ['Dallas Youth Cricket League', 'YOUTH', 8,  8,  2, 188, 278, '31.33', '67.63', 87, 1],
-  ['Dallas Youth Cricket League', '1 DAY', 4,  3,  0,   9,  54,  '3.00', '16.67',  4, 0],
-  ['Cricket of San Antonio',      '1 DAY', 25, 25, 9, 235, 436, '14.69', '53.90', 50, 1],
-  ['Cricket of San Antonio',      'T20',   23, 21, 9, 156, 363, '13.00', '42.98', 38, 0],
-  ['Houston Taped Ball Cricket',  'T20',    2,  1, 1,   8,  19,     '—', '42.11',  8, 0],
-  ['Natl Youth Cricket Tournament','1 DAY', 7,  7, 3, 192, 236, '48.00', '81.36', 59, 2],
-  ['American Cricket League',     'T20',    9,  7, 3,  59, 123, '14.75', '47.97', 21, 0],
-  ['American Cricket League',     '1 DAY',  1,  1, 1,   7,  21,     '—', '33.33',  7, 0],
-  ['Austin Youth League',         'YOUTH',  4,  3, 2,  50,  63, '50.00', '79.37', 48, 0],
-  ['Frisco Youth Cricket League', '1 DAY',  3,  3, 1,  33,  62, '16.50', '53.23', 19, 0],
-  ['The Matches',                 '1 DAY',  1,  1, 0,  10,  35, '10.00', '28.57', 10, 0],
-  ['NTCAYouth',                   '1 DAY',  4,  0, 0,   0,   0,     '—',     '—',  0, 0],
-  ['MLK JR Texas Cup',            '1 DAY',  4,  3, 0, 113, 128, '37.67', '88.28', 67, 1],
-  ['MLK JR Texas Cup',            'T20',    4,  3, 1,  34,  73, '17.00', '46.58', 18, 0],
-  ['USA Cricket Junior Pathway',  'T20',   24, 19, 8, 461, 516, '41.91', '89.34', 90, 1],
-  ['USA Cricket Junior Pathway',  '1 DAY',  6,  4, 3,  36,  72, '36.00', '50.00', 18, 0],
-  ['USA Cricket Junior Pathway',  'YOUTH',  1,  1, 0,   0,   1,  '0.00',  '0.00',  0, 0],
-  ['ACL Test Series',             'TEST',   1,  2, 1,   3,  22,  '3.00', '13.64',  2, 0],
-  ['LPCL',                        '1 DAY',  3,  3, 0,   5,  24,  '1.67', '20.83',  5, 0],
-  ['AMLCA - Elite Jr Championship','1 DAY', 8,  8, 1,  46, 100,  '6.57', '46.00', 13, 0],
-  ['Presidents Cup',              'T20',    8,  6, 1,  86,  86, '17.20','100.00',  8, 0],
-  ['Austin Elite Youth C.L.',     'T20',    9,  9, 6, 224, 288, '74.67', '77.78', 50, 2],
-  ['Austin Youth Cricket Consort.','YOUTH', 4,  4, 3,  87,  88, '87.00', '98.86', 44, 0],
-  ['Austin Youth Cricket Consort.','1 DAY', 7,  7, 6,  74, 143, '74.00', '51.75', 16, 0],
-  ['Austin Youth Cricket Consort.','TEST',  2,  2, 1,  48,  68, '48.00', '70.59', 29, 0],
-  ['Houston Invitational (HIT)',  'T20',    4,  4, 2,  59,  85, '20.50', '69.49', 20, 0],
-];
+// ─────────────────────────────────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initNonData();   // canvas, nav, footer — don't need data
 
-// Bowling detailed rows — source: Bowling sheet in data.json
-// Columns: [Tournament, Format, M, Inn, Overs, Runs, Wkts, Best, Mdns, Econ]
-const BOWLING_ROWS = [
-  ['Dallas Youth Cricket League', 'YOUTH',  8,  1, '1.0',  17, 0, '0/0', 0, 17.00],
-  ['Dallas Youth Cricket League', '1 DAY',  4,  1, '2.0',  10, 0, '0/0', 0,  5.00],
-  ['Cricket of San Antonio',      '1 DAY', 25, 13, '30.0', 225, 5, '5/1', 0,  7.50],
-  ['Cricket of San Antonio',      'T20',   23,  8, '23.0', 133, 1,'13/1', 0,  5.78],
-  ['American Cricket League',     'T20',    9,  3, '7.0',   70, 0, '0/0', 0, 10.00],
-  ['NTCAYouth',                   '1 DAY',  4,  1, '0.3',    6, 0, '0/0', 0, 12.00],
-  ['MLK JR Texas Cup',            'T20',    4,  1, '2.0',    6, 0, '0/0', 0,  3.00],
-  ['USA Cricket Junior Pathway',  'T20',   24,  4, '8.0',    4, 1,'10/1', 1,  0.50],
-  ['USA Cricket Junior Pathway',  '1 DAY',  6,  4, '7.0',   29, 3,'10/2', 0,  4.14],
-  ['ACL Test Series',             'TEST',   1,  2, '7.0',   21, 1,'15/1', 0,  3.00],
-  ['LPCL',                        '1 DAY',  3,  2, '4.0',   26, 1,'16/1', 0,  6.50],
-  ['Presidents Cup',              'T20',    8,  4, '6.0',   37, 1, '6/1', 0,  6.17],
-  ['Austin Elite Youth C.L.',     'T20',    9,  2, '5.0',   36, 0, '0/0', 1,  7.20],
-  ['Austin Youth Cricket Consort.','YOUTH', 4,  1, '5.0',   28, 0, '0/0', 0,  5.60],
-  ['Austin Youth Cricket Consort.','1 DAY', 7,  0, '0.0',    0, 0, '0/0', 0,  0.00],
-  ['Austin Youth Cricket Consort.','TEST',  2,  1, '1.0',    2, 0, '0/0', 0,  2.00],
-  ['Houston Invitational (HIT)',  'T20',    4,  1, '0.4',    1, 0, '0/0', 0,  1.50],
-];
+  // Listen for Firestore data from firebase-data.js
+  document.addEventListener('firestoreReady', (e) => {
+    if (e.detail?.ok) {
+      if (e.detail.career)      DATA.career      = e.detail.career;
+      if (e.detail.tournaments) DATA.tournaments  = e.detail.tournaments;
+      if (e.detail.yearly)      DATA.yearly       = e.detail.yearly;
+    }
+    initData();
+  }, { once: true });
 
-// Wicketkeeping rows — source: Wicketkeeping sheet in data.json
-// Columns: [Tournament, Format, Matches, Catches]
-const KEEPING_ROWS = [
-  ['Dallas Youth Cricket League',    'All', 12, 10],
-  ['Cricket of San Antonio',         'All', 48,  8],
-  ['National Youth Cricket Tourn.',  'All',  7,  0],
-  ['American Cricket League',        'All', 10,  1],
-  ['MLK JR Texas Cup',               'All',  8,  3],
-  ['USA Cricket Junior Pathway',     'All', 31, 12],
-  ['AMLCA - Elite Jr Championship',  'All',  8,  2],
-  ['Presidents Cup',                 'All',  8,  1],
-  ['Austin Elite Youth C.L.',        'All',  9,  2],
-  ['Austin Youth Cricket Consort.',  'All', 13,  7],
-  ['Houston Invitational (HIT)',     'All',  4,  2],
-];
+  // Fallback: if firebase-data.js never fires, boot with local data after 2.5s
+  setTimeout(() => {
+    if (!document.body.dataset.dataBooted) initData();
+  }, 2500);
+});
 
-// ── CANVAS PARTICLE BACKGROUND ───────────────────────────────────────────────
+function initNonData() {
+  initCanvas();
+  initNav();
+  initFooter();
+  initTheme();
+}
 
+function initData() {
+  document.body.dataset.dataBooted = '1';
+  renderHero();
+  renderParallax();
+  renderOverview();
+  initYearly();
+  initCharts();
+  renderTournaments();       // render cards first
+  initTournamentFilters();   // then wire filters
+  initStats();
+  renderProfile();
+  setTimeout(initFadeUp, 150);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// HERO CANVAS — particle field
+// ─────────────────────────────────────────────────────────────────────────
 function initCanvas() {
   const canvas = document.getElementById('heroCanvas');
   if (!canvas) return;
@@ -172,44 +95,42 @@ function initCanvas() {
     reset() {
       this.x  = Math.random() * w;
       this.y  = Math.random() * h;
-      this.vx = (Math.random() - .5) * .4;
-      this.vy = (Math.random() - .5) * .4;
-      this.r  = Math.random() * 1.6 + .4;
-      this.a  = Math.random() * .5 + .1;
+      this.vx = (Math.random() - .5) * .35;
+      this.vy = (Math.random() - .5) * .35;
+      this.r  = Math.random() * 1.5 + .4;
+      this.a  = Math.random() * .4 + .1;
+      // Alternate teal / gold particles
+      this.color = Math.random() > .6
+        ? `rgba(0,212,170,${this.a})`
+        : `rgba(245,200,66,${this.a * .6})`;
     }
     update() {
-      this.x += this.vx;
-      this.y += this.vy;
+      this.x += this.vx; this.y += this.vy;
       if (this.x < 0 || this.x > w || this.y < 0 || this.y > h) this.reset();
     }
     draw() {
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(100,180,255,${this.a})`;
+      ctx.fillStyle = this.color;
       ctx.fill();
     }
   }
 
-  function initParticles() {
-    particles = Array.from({ length: 120 }, () => new Particle());
-  }
-
   function drawLines() {
-    for (let i = 0; i < particles.length; i++) {
+    for (let i = 0; i < particles.length; i++)
       for (let j = i + 1; j < particles.length; j++) {
         const dx = particles[i].x - particles[j].x;
         const dy = particles[i].y - particles[j].y;
-        const d  = Math.sqrt(dx * dx + dy * dy);
-        if (d < 100) {
+        const d  = Math.sqrt(dx*dx + dy*dy);
+        if (d < 90) {
           ctx.beginPath();
           ctx.moveTo(particles[i].x, particles[i].y);
           ctx.lineTo(particles[j].x, particles[j].y);
-          ctx.strokeStyle = `rgba(100,180,255,${.12 * (1 - d / 100)})`;
-          ctx.lineWidth = .6;
+          ctx.strokeStyle = `rgba(0,212,170,${.08*(1-d/90)})`;
+          ctx.lineWidth = .5;
           ctx.stroke();
         }
       }
-    }
   }
 
   function frame() {
@@ -220,432 +141,208 @@ function initCanvas() {
   }
 
   resize();
-  initParticles();
+  particles = Array.from({ length: 100 }, () => new Particle());
   frame();
-  window.addEventListener('resize', () => { resize(); initParticles(); });
+  window.addEventListener('resize', () => { resize(); particles = Array.from({ length: 100 }, () => new Particle()); });
 }
 
-// ── COUNT-UP ANIMATION ────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// THEME TOGGLE
+// ─────────────────────────────────────────────────────────────────────────
+function initTheme() {
+  const saved       = localStorage.getItem('bp_theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme       = saved || (prefersDark ? 'dark' : 'light');
+  applyTheme(theme);
 
-function countUp(el, target, duration = 1800) {
+  const btn = document.getElementById('themeToggle');
+  btn?.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next    = current === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    localStorage.setItem('bp_theme', next);
+  });
+
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+    if (!localStorage.getItem('bp_theme')) applyTheme(e.matches ? 'dark' : 'light');
+  });
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// NAVBAR
+// ─────────────────────────────────────────────────────────────────────────
+function initNav() {
+  const nav    = document.getElementById('navbar');
+  const toggle = document.getElementById('navToggle');
+  const links  = document.getElementById('navLinks');
+
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 40);
+  }, { passive: true });
+
+  toggle?.addEventListener('click', () => {
+    const open = links.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', open);
+  });
+
+  links?.querySelectorAll('a').forEach(a =>
+    a.addEventListener('click', () => {
+      links.classList.remove('open');
+      toggle?.setAttribute('aria-expanded', 'false');
+    })
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// FOOTER
+// ─────────────────────────────────────────────────────────────────────────
+function initFooter() {
+  const y = document.getElementById('footerYear');
+  if (y) y.textContent = new Date().getFullYear();
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// HERO COUNTERS — animated count-up
+// ─────────────────────────────────────────────────────────────────────────
+function countUp(el, target, duration = 1600) {
+  if (!el) return;
+  const isFloat = !Number.isInteger(target);
   const start = performance.now();
   function step(now) {
-    const t = Math.min((now - start) / duration, 1);
+    const t    = Math.min((now - start) / duration, 1);
     const ease = 1 - Math.pow(1 - t, 3);
-    el.textContent = Math.floor(ease * target).toLocaleString();
+    const val  = ease * target;
+    el.textContent = isFloat ? val.toFixed(2) : Math.floor(val).toLocaleString();
     if (t < 1) requestAnimationFrame(step);
-    else el.textContent = target.toLocaleString();
+    else el.textContent = isFloat ? target.toFixed(2) : target.toLocaleString();
   }
   requestAnimationFrame(step);
 }
 
-function initCountUps() {
-  // Values come from Firestore (via CAREER global) or static fallback
-  const pairs = [
-    ['c1', CAREER.matches     || 176],
-    ['c2', CAREER.runs        || 2223],
-    ['c3', CAREER.catches     || 48],
-    ['c4', CAREER.tournaments || 20],
+function renderHero() {
+  const C = DATA.career;
+  const counters = [
+    ['hc-matches',    C.matches],
+    ['hc-runs',       C.runs],
+    ['hc-hs',         C.hs],
+    ['hc-catches',    C.catches],
+    ['hc-wickets',    C.wickets],
+    ['hc-tournaments',C.tournaments],
   ];
+
+  // Trigger on first intersection with hero
+  const hero = document.querySelector('.hero-counters');
+  if (!hero) return;
+
   const io = new IntersectionObserver(entries => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        pairs.forEach(([id, val]) => {
-          const el = document.getElementById(id);
-          if (el) countUp(el, val);
-        });
-        io.disconnect();
-      }
-    });
+    if (!entries[0].isIntersecting) return;
+    counters.forEach(([id, val]) => countUp(document.getElementById(id), val));
+    io.disconnect();
   }, { threshold: .3 });
-  const hero = document.querySelector('.hero-stats');
-  if (hero) io.observe(hero);
+  io.observe(hero);
+
+  // Update footer stats
+  const fs = document.getElementById('footerStats');
+  if (fs) fs.textContent = `${C.matches} matches · ${C.tournaments} tournaments`;
 }
 
-// ── NAVBAR ────────────────────────────────────────────────────────────────────
-
-function initNav() {
-  const nav = document.getElementById('navbar');
-  window.addEventListener('scroll', () => {
-    nav.classList.toggle('scrolled', window.scrollY > 40);
-  });
-  const toggle = document.getElementById('navToggle');
-  const links  = document.querySelector('.nav-links');
-  toggle?.addEventListener('click', () => links?.classList.toggle('open'));
-  document.querySelectorAll('.nav-links a').forEach(a => {
-    a.addEventListener('click', () => links?.classList.remove('open'));
-  });
+// ─────────────────────────────────────────────────────────────────────────
+// PARALLAX DIVIDER
+// ─────────────────────────────────────────────────────────────────────────
+function renderParallax() {
+  const el = document.getElementById('parallaxText');
+  if (!el) return;
+  const C = DATA.career;
+  el.innerHTML = [
+    `${C.matches} Matches`,
+    `${C.runs.toLocaleString()} Runs`,
+    `${C.tournaments} Tournaments`,
+    `${C.catches} Catches`,
+    `${C.wickets} Wickets`,
+  ].map((t, i) =>
+    `${i > 0 ? '<span class="dot" aria-hidden="true">·</span>' : ''}${t}`
+  ).join('');
 }
 
-// ── FADE-IN ON SCROLL ─────────────────────────────────────────────────────────
-
-function initFadeUp() {
-  const els = document.querySelectorAll('.ov-card, .t-card, .pd-item, .chart-container');
-  const io = new IntersectionObserver(entries => {
-    entries.forEach((e, i) => {
-      if (e.isIntersecting) {
-        setTimeout(() => e.target.classList.add('visible'), i * 60);
-        io.unobserve(e.target);
-      }
-    });
-  }, { threshold: .1 });
-  els.forEach(el => { el.classList.add('fade-up'); io.observe(el); });
-}
-
-// ── OVERVIEW CARDS ────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────
+// OVERVIEW CARDS
+// ─────────────────────────────────────────────────────────────────────────
 function renderOverview() {
+  const grid = document.getElementById('overviewGrid');
+  if (!grid) return;
+  const C = DATA.career;
+
   const cards = [
-    { icon:'🏏', value: CAREER.matches,             label:'Matches Played',    sub:'Across 20 tournaments',          color:'c-blue'   },
-    { icon:'📊', value: CAREER.runs.toLocaleString(),label:'Career Runs',       sub:'Right hand top-order batter',    color:'c-teal'   },
-    { icon:'⚡', value: CAREER.avg,                  label:'Batting Average',   sub:'Career batting average',         color:'c-gold'   },
-    { icon:'💥', value: CAREER.sr,                   label:'Strike Rate',       sub:'Runs per 100 balls faced',       color:'c-purple' },
-    { icon:'🎯', value: CAREER.hs,                   label:'Highest Score',     sub:'vs USA Cricket Junior Pathway',  color:'c-blue'   },
-    { icon:'🏆', value: CAREER.fifties,              label:'Half Centuries',    sub:'50+ scores in career',           color:'c-green'  },
-    { icon:'🎳', value: CAREER.wickets,              label:'Wickets Taken',     sub:'Right arm leg spin',             color:'c-orange' },
-    { icon:'🧤', value: CAREER.catches,              label:'Catches',           sub:'Wicket-keeper dismissals',       color:'c-pink'   },
+    { icon:'🏏', val: C.matches,       label:'Matches',         sub:`${C.tournaments} tournaments played`,           color:'c-teal'   },
+    { icon:'📊', val: C.runs.toLocaleString(), label:'Career Runs', sub:'Right hand top-order batter',                color:'c-gold'   },
+    { icon:'⚡', val: C.avg,            label:'Batting Average', sub:`Strike rate ${C.sr}`,                          color:'c-blue'   },
+    { icon:'🎯', val: C.hs,             label:'Highest Score',   sub:`${C.x50} half-centuries, ${C.x25} 25s`,        color:'c-purple' },
+    { icon:'🔶', val: C.fours,          label:'Fours Hit',       sub:`${C.sixes} sixes · Boundary power`,            color:'c-orange' },
+    { icon:'🎳', val: C.wickets,        label:'Wickets Taken',   sub:`Best: ${bestBBF()} · Econ ${C.econ}`,          color:'c-teal'   },
+    { icon:'🧤', val: C.catches,        label:'Catches',         sub:'Wicket keeper & fielding dismissals',          color:'c-gold'   },
+    { icon:'📅', val: DATA.yearly.length, label:'Seasons Active', sub:`${DATA.yearly[0]?.year} – ${DATA.yearly[DATA.yearly.length-1]?.year}`, color:'c-blue' },
   ];
-  document.getElementById('overviewGrid').innerHTML = cards.map(c => `
-    <div class="ov-card ${c.color}">
-      <span class="ov-icon">${c.icon}</span>
-      <div class="ov-value">${c.value}</div>
+
+  grid.innerHTML = cards.map(c => `
+    <div class="ov-card ${c.color} fade-up" role="listitem">
+      <span class="ov-icon" aria-hidden="true">${c.icon}</span>
+      <div class="ov-value">${c.val}</div>
       <div class="ov-label">${c.label}</div>
       <div class="ov-sub">${c.sub}</div>
     </div>
   `).join('');
 }
 
-// ── CHARTS ───────────────────────────────────────────────────────────────────
-
-let mainChart = null;
-
-const CHART_DEFAULTS = {
-  responsive: true,
-  maintainAspectRatio: true,
-  animation: { duration: 700, easing: 'easeOutQuart' },
-  plugins: {
-    legend: { display: false },
-    tooltip: {
-      backgroundColor: '#0d1b2e',
-      titleColor: '#e8edf4',
-      bodyColor: '#7a9bb8',
-      borderColor: 'rgba(255,255,255,.1)',
-      borderWidth: 1,
-      padding: 12,
-      cornerRadius: 10,
+function bestBBF() {
+  let best = '0/0';
+  let bestW = 0, bestR = 999;
+  DATA.tournaments.forEach(t => {
+    const b = t.bbf;
+    if (!b || b === '0/0') return;
+    const [w, r] = b.split('/').map(Number);
+    if (w > bestW || (w === bestW && r < bestR)) {
+      bestW = w; bestR = r; best = b;
     }
-  },
-  scales: {
-    x: {
-      ticks: { color: '#7a9bb8', font: { size: 10 }, maxRotation: 35 },
-      grid: { color: 'rgba(255,255,255,.05)' },
-    },
-    y: {
-      ticks: { color: '#7a9bb8', font: { size: 11 } },
-      grid: { color: 'rgba(255,255,255,.05)' },
-    }
-  }
+  });
+  return best;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// YEAR BY YEAR GROWTH
+// ─────────────────────────────────────────────────────────────────────────
+const YEARLY_METRICS = {
+  runs:    { label: 'Runs',         key: 'runs',    color: '#3b82f6' },
+  avg:     { label: 'Batting Avg',  key: 'avg',     color: '#00d4aa' },
+  sr:      { label: 'Strike Rate',  key: 'sr',      color: '#f5c842' },
+  mat:     { label: 'Matches',      key: 'mat',     color: '#8b5cf6' },
+  fours:   { label: 'Fours',        key: 'fours',   color: '#f97316' },
+  catches: { label: 'Catches',      key: 'catches', color: '#ef4444' },
 };
-
-const INSIGHTS = {
-  runs:    `<strong>Runs by Tournament:</strong> USA Cricket Junior Pathway leads with <strong>497 runs</strong> across 31 matches, followed by Cricket of San Antonio (391), Austin Elite Youth Cricket League (224), and Austin Youth Cricket Consortium (209). Bhadra has contributed runs in every active tournament.`,
-  avg:     `<strong>Batting Average:</strong> Austin Elite Youth Cricket League shows the highest average at <strong>74.67</strong>, followed by Austin Youth Cricket Consortium (69.67) and Austin Youth League (50.00). His NYCT average is an outstanding <strong>48.00</strong>, and across USA Cricket Junior Pathway — his most-played tournament — he averages <strong>38.23</strong>.`,
-  sr:      `<strong>Strike Rate:</strong> Presidents Cup features a blistering <strong>100.0 SR</strong>. Austin Youth Cricket Consortium (YOUTH) reaches 98.86, and USA Cricket Junior Pathway T20s hit 89.34. His MLK JR Texas Cup 1DAY SR of 88.28 shows he scores quickly under pressure too.`,
-  bowling: `<strong>Bowling Economy:</strong> USA Cricket Junior Pathway T20 is his most economical — <strong>0.50 RPO</strong> from 8 overs, including 1 wicket and 1 maiden. ACL Test Series (3.00) and MLK JR Texas Cup T20 (3.00) also show tight control. His best figures are <strong>5/1</strong> for Cricket of San Antonio (1DAY) and <strong>3 wickets</strong> for USA Junior Pathway 1DAY.`,
-  radar:   `<strong>All-Round Profile:</strong> Radar shows Bhadra's strengths across 5 key dimensions benchmarked against U11 peer standards. Batting average (24.43 vs 15 benchmark), wicket-keeping (48 catches), highest score (90), run volume (2,223), and wickets (13) all contribute to a well-rounded junior profile.`,
-};
-
-function buildChart(type) {
-  // Derived at call-time so it reflects the live TOURNAMENTS global
-  const ACTIVE_TOURS = TOURNAMENTS.filter(t => t.matches > 0);
-
-  const ctx = document.getElementById('mainChart').getContext('2d');
-  if (mainChart) { mainChart.destroy(); mainChart = null; }
-
-  document.getElementById('chartInsight').innerHTML = INSIGHTS[type] || '';
-
-  const labels = ACTIVE_TOURS.map(t => {
-    const w = t.name.split(' ');
-    return w.length > 4 ? w.slice(0,3).join(' ') + '…' : t.name;
-  });
-
-  if (type === 'radar') {
-    // Benchmarks: realistic U11/youth competitive player reference points
-    // batting avg benchmark 30, SR benchmark 75, runs benchmark 400,
-    // catches benchmark 20, wickets benchmark 10
-    const data = {
-      labels: ['Batting Avg', 'Strike Rate', 'Run Volume', 'Catches', 'Wickets'],
-      datasets: [{
-        label: 'Bhadra',
-        data: [
-          Math.min((CAREER.avg  / 30)  * 100, 100),   // avg 24.43 / 30 = 81%
-          Math.min((CAREER.sr   / 75)  * 100, 100),   // sr  65.69 / 75 = 88%
-          Math.min((CAREER.runs / 400) * 100, 100),   // runs 2223 / 400 = 100% (cap)
-          Math.min((CAREER.catches / 20) * 100, 100), // catches 48 / 20 = 100% (cap)
-          Math.min((CAREER.wickets / 10) * 100, 100), // wickets 13 / 10 = 100% (cap)
-        ],
-        fill: true,
-        backgroundColor: 'rgba(0,201,167,.15)',
-        borderColor: '#00c9a7',
-        pointBackgroundColor: '#00c9a7',
-        pointBorderColor: '#fff',
-        pointHoverBackgroundColor: '#fff',
-        pointHoverBorderColor: '#00c9a7',
-        borderWidth: 2,
-        pointRadius: 5,
-      }]
-    };
-    mainChart = new Chart(ctx, {
-      type: 'radar',
-      data,
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        animation: { duration: 700 },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#0d1b2e',
-            titleColor: '#e8edf4',
-            bodyColor: '#7a9bb8',
-            borderColor: 'rgba(255,255,255,.1)',
-            borderWidth: 1,
-            padding: 12,
-            cornerRadius: 10,
-          }
-        },
-        scales: {
-          r: {
-            min: 0, max: 100,
-            ticks: { stepSize: 25, color: '#7a9bb8', backdropColor: 'transparent', font:{size:10} },
-            grid:  { color: 'rgba(255,255,255,.1)' },
-            pointLabels: { color: '#e8edf4', font: { size: 13, weight: '600' } },
-            angleLines: { color: 'rgba(255,255,255,.1)' },
-          }
-        }
-      }
-    });
-    return;
-  }
-
-  const gradFn = (color) => {
-    const g = ctx.createLinearGradient(0, 0, 0, 380);
-    g.addColorStop(0, color + '99');
-    g.addColorStop(1, color + '11');
-    return g;
-  };
-
-  const configs = {
-    runs: {
-      data: ACTIVE_TOURS.map(t => t.runs),
-      color: '#1a6fff',
-      label: 'Runs',
-    },
-    avg: {
-      data: ACTIVE_TOURS.map(t => t.avg ?? 0),
-      color: '#00c9a7',
-      label: 'Batting Average',
-    },
-    sr: {
-      data: ACTIVE_TOURS.map(t => t.sr ?? 0),
-      color: '#f5a623',
-      label: 'Strike Rate',
-    },
-    bowling: {
-      data: ACTIVE_TOURS.map(t => t.econ ?? 0),
-      color: '#8b5cf6',
-      label: 'Economy Rate',
-    },
-  };
-
-  const cfg = configs[type];
-
-  mainChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: cfg.label,
-        data: cfg.data,
-        backgroundColor: gradFn(cfg.color),
-        borderColor: cfg.color,
-        borderWidth: 2,
-        borderRadius: 8,
-        borderSkipped: false,
-        hoverBackgroundColor: cfg.color + 'cc',
-      }]
-    },
-    options: {
-      ...CHART_DEFAULTS,
-      plugins: {
-        ...CHART_DEFAULTS.plugins,
-        tooltip: {
-          ...CHART_DEFAULTS.plugins.tooltip,
-          callbacks: {
-            title: (items) => ACTIVE_TOURS[items[0].dataIndex]?.name ?? '',
-            label: (item) => ` ${cfg.label}: ${item.raw}`
-          }
-        }
-      }
-    }
-  });
-}
-
-function initCharts() {
-  buildChart('runs');
-  document.querySelectorAll('.ctab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.ctab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      buildChart(btn.dataset.chart);
-    });
-  });
-}
-
-// ── TOURNAMENT CARDS ──────────────────────────────────────────────────────────
-
-function fmtClass(fmt) {
-  const f = fmt.toUpperCase();
-  if (f.includes('T20'))  return 'fmt-t20';
-  if (f.includes('1DAY') || f.includes('1 DAY')) return 'fmt-1day';
-  if (f.includes('YOUTH')) return 'fmt-youth';
-  if (f.includes('TEST'))  return 'fmt-test';
-  if (f === 'ZERO')        return 'fmt-zero';
-  return 'fmt-mix';
-}
-
-function fmtLabel(fmt) {
-  if (fmt === 'ZERO') return 'No Activity';
-  return fmt.replace(/\//g,' / ');
-}
-
-function renderTournamentCards(search = '', formatFilter = '') {
-  const grid = document.getElementById('tournamentGrid');
-  const filtered = TOURNAMENTS.filter(t => {
-    const matchSearch = t.name.toLowerCase().includes(search.toLowerCase());
-    const matchFmt = !formatFilter || t.format.toUpperCase().includes(formatFilter.toUpperCase());
-    return matchSearch && matchFmt;
-  });
-
-  if (!filtered.length) {
-    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--ink2);font-size:14px;">No tournaments match your filters.</div>`;
-    return;
-  }
-
-  grid.innerHTML = filtered.map((t, i) => {
-    const isZero = t.format === 'ZERO';
-    const expand = !isZero ? `
-      <div class="t-expand">
-        <table class="t-detail-table">
-          <thead>
-            <tr><th>Metric</th><th>Batting</th><th>Bowling</th><th>Keeping</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Matches</td><td colspan="3">${t.matches}</td></tr>
-            <tr>
-              <td>Runs / Average</td>
-              <td>${t.runs} / ${t.avg != null ? t.avg : '—'}</td>
-              <td>Wkts: ${t.wkts}</td>
-              <td>Catches: ${t.catches}</td>
-            </tr>
-            <tr>
-              <td>Strike Rate</td>
-              <td>${t.sr != null ? t.sr : '—'}</td>
-              <td>Economy: ${t.econ != null ? t.econ : '—'}</td>
-              <td>—</td>
-            </tr>
-            <tr>
-              <td>Highest Score</td>
-              <td>${t.hs > 0 ? t.hs : '—'}</td>
-              <td>—</td>
-              <td>—</td>
-            </tr>
-            <tr>
-              <td>Half Centuries</td>
-              <td>${t.fifties}</td>
-              <td>—</td>
-              <td>—</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="t-card-footer">
-        <span>Click to expand details</span>
-        <span class="t-chevron">▼</span>
-      </div>
-    ` : '<div class="zero-badge">No recorded activity</div>';
-
-    return `
-      <div class="t-card" onclick="toggleCard(this)">
-        <div class="t-card-header">
-          <div class="t-name">${t.name}</div>
-          <span class="t-format ${fmtClass(t.format)}">${fmtLabel(t.format)}</span>
-        </div>
-        ${!isZero ? `
-        <div class="t-mini-stats">
-          <div class="t-stat"><strong>${t.matches}</strong><span>Matches</span></div>
-          <div class="t-stat"><strong>${t.runs}</strong><span>Runs</span></div>
-          <div class="t-stat"><strong>${t.avg ?? '—'}</strong><span>Avg</span></div>
-          <div class="t-stat"><strong>${t.hs}</strong><span>HS</span></div>
-          <div class="t-stat"><strong>${t.catches}</strong><span>Catches</span></div>
-        </div>
-        ` : ''}
-        ${expand}
-      </div>
-    `;
-  }).join('');
-
-  // Re-run fade-up on newly rendered cards
-  initFadeUp();
-}
-
-function toggleCard(card) {
-  card.classList.toggle('expanded');
-  // update footer text
-  const footer = card.querySelector('.t-card-footer span:first-child');
-  if (footer) {
-    footer.textContent = card.classList.contains('expanded')
-      ? 'Click to collapse'
-      : 'Click to expand details';
-  }
-}
-
-function initTournaments() {
-  renderTournamentCards();
-  const search = document.getElementById('tourneySearch');
-  const fmt    = document.getElementById('formatFilter');
-  search.addEventListener('input',  () => renderTournamentCards(search.value, fmt.value));
-  fmt.addEventListener('change',    () => renderTournamentCards(search.value, fmt.value));
-}
-
-// ── YEAR BY YEAR ──────────────────────────────────────────────────────────────
 
 let yearlyChart = null;
 
-const YEARLY_METRICS = {
-  runs:    { label: 'Runs',         color: '#1a6fff', key: 'runs'    },
-  avg:     { label: 'Batting Avg',  color: '#00c9a7', key: 'avg'     },
-  sr:      { label: 'Strike Rate',  color: '#f5a623', key: 'sr'      },
-  matches: { label: 'Matches',      color: '#8b5cf6', key: 'matches' },
-};
-
 function buildYearlyChart(metric) {
-  const ctx = document.getElementById('yearlyChart').getContext('2d');
+  const cfg  = YEARLY_METRICS[metric];
+  const Y    = DATA.yearly;
+  const vals = Y.map(y => y[cfg.key] ?? 0);
+  const labs = Y.map(y => String(y.year));
+  const ctx  = document.getElementById('yearlyChart')?.getContext('2d');
+  if (!ctx) return;
+
   if (yearlyChart) { yearlyChart.destroy(); yearlyChart = null; }
 
-  const cfg  = YEARLY_METRICS[metric];
-  const vals = YEARLY_STATS.map(y => y[cfg.key]);
-  const labels = YEARLY_STATS.map(y => String(y.year));
-
-  // Gradient
   const grad = ctx.createLinearGradient(0, 0, 0, 280);
-  grad.addColorStop(0, cfg.color + 'cc');
-  grad.addColorStop(1, cfg.color + '11');
+  grad.addColorStop(0, cfg.color + 'bb');
+  grad.addColorStop(1, cfg.color + '08');
 
   yearlyChart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels,
+      labels: labs,
       datasets: [{
         label: cfg.label,
         data: vals,
@@ -656,106 +353,69 @@ function buildYearlyChart(metric) {
         pointBackgroundColor: '#fff',
         pointBorderColor: cfg.color,
         pointBorderWidth: 3,
-        pointRadius: 8,
-        pointHoverRadius: 11,
-        tension: 0.35,
-      }]
+        pointRadius: 7,
+        pointHoverRadius: 10,
+        tension: .35,
+      }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      animation: { duration: 700, easing: 'easeOutQuart' },
+      animation: { duration: 600, easing: 'easeOutQuart' },
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#0d1b2e',
-          titleColor: '#e8edf4',
-          bodyColor: '#7a9bb8',
-          borderColor: 'rgba(255,255,255,.1)',
-          borderWidth: 1,
-          padding: 14,
-          cornerRadius: 10,
+          ...TOOLTIP,
           callbacks: {
-            title: items => YEARLY_STATS[items[0].dataIndex].year + ' Season',
+            title: items => DATA.yearly[items[0].dataIndex].year + ' Season',
             label: item  => ` ${cfg.label}: ${item.raw}`,
             afterLabel: item => {
-              const y = YEARLY_STATS[item.dataIndex];
-              return ` Matches: ${y.matches}  |  HS: ${y.hs}  |  50s: ${y.fifties}`;
-            }
-          }
-        }
+              const y = DATA.yearly[item.dataIndex];
+              return ` Matches: ${y.mat}  HS: ${y.hs}  50s: ${y.x50}`;
+            },
+          },
+        },
       },
       scales: {
-        x: {
-          ticks: { color: '#7a9bb8', font: { size: 13, weight: '700' } },
-          grid:  { color: 'rgba(255,255,255,.05)' },
-        },
-        y: {
-          ticks: { color: '#7a9bb8', font: { size: 11 } },
-          grid:  { color: 'rgba(255,255,255,.05)' },
-          beginAtZero: true,
-        }
-      }
-    }
+        x: { ticks: { color: '#8ba3c7', font:{ size:13, weight:'700' } }, grid: GRID },
+        y: { ticks: TICK, grid: GRID, beginAtZero: true },
+      },
+    },
   });
 }
 
 function renderYearlyCards() {
   const container = document.getElementById('yearlyCards');
-  container.innerHTML = YEARLY_STATS.map((y, i) => {
-    const prev = YEARLY_STATS[i - 1];
-    const runsGrowth = prev ? Math.round(((y.runs - prev.runs) / prev.runs) * 100) : null;
-    const avgGrowth  = prev ? (y.avg - prev.avg).toFixed(1) : null;
+  if (!container) return;
+  const Y = DATA.yearly;
 
-    const growthBadge = runsGrowth !== null
-      ? `<span class="yc-growth ${runsGrowth >= 0 ? 'yc-up' : 'yc-down'}">
-           ${runsGrowth >= 0 ? '▲' : '▼'} ${Math.abs(runsGrowth)}% runs
-         </span>`
-      : '<span class="yc-growth yc-base">Baseline</span>';
+  container.innerHTML = Y.map((y, i) => {
+    const prev       = Y[i - 1];
+    const runsGrowth = prev ? Math.round(((y.runs - prev.runs) / Math.max(prev.runs, 1)) * 100) : null;
+    const badge      = runsGrowth === null
+      ? `<span class="yc-badge base">Baseline</span>`
+      : runsGrowth >= 0
+        ? `<span class="yc-badge up">▲ ${runsGrowth}% runs</span>`
+        : `<span class="yc-badge down">▼ ${Math.abs(runsGrowth)}% runs</span>`;
 
     return `
-      <div class="yc-card">
-        <div class="yc-year-wrap">
+      <div class="yc-card fade-up" role="listitem">
+        <div class="yc-year-row">
           <span class="yc-year">${y.year}</span>
-          ${growthBadge}
+          ${badge}
         </div>
-        <div class="yc-primary">
-          <div class="yc-stat">
-            <span class="yc-val">${y.runs}</span>
-            <span class="yc-lbl">Runs</span>
-          </div>
-          <div class="yc-stat">
-            <span class="yc-val">${y.avg}</span>
-            <span class="yc-lbl">Average</span>
-          </div>
-          <div class="yc-stat">
-            <span class="yc-val">${y.sr}</span>
-            <span class="yc-lbl">Strike Rate</span>
-          </div>
-          <div class="yc-stat">
-            <span class="yc-val">${y.matches}</span>
-            <span class="yc-lbl">Matches</span>
-          </div>
-          <div class="yc-stat">
-            <span class="yc-val">${y.hs}</span>
-            <span class="yc-lbl">Highest Score</span>
-          </div>
-          <div class="yc-stat">
-            <span class="yc-val">${y.fifties}</span>
-            <span class="yc-lbl">50s</span>
-          </div>
-          <div class="yc-stat">
-            <span class="yc-val">${y.fours}</span>
-            <span class="yc-lbl">Fours</span>
-          </div>
-          <div class="yc-stat">
-            <span class="yc-val">${y.catches}</span>
-            <span class="yc-lbl">Catches</span>
-          </div>
+        <div class="yc-stats">
+          <div class="yc-stat"><span class="yc-val">${y.runs}</span><span class="yc-lbl">Runs</span></div>
+          <div class="yc-stat"><span class="yc-val">${y.avg ?? '—'}</span><span class="yc-lbl">Avg</span></div>
+          <div class="yc-stat"><span class="yc-val">${y.sr  ?? '—'}</span><span class="yc-lbl">SR</span></div>
+          <div class="yc-stat"><span class="yc-val">${y.mat}</span><span class="yc-lbl">Mat</span></div>
+          <div class="yc-stat"><span class="yc-val">${y.hs}</span><span class="yc-lbl">HS</span></div>
+          <div class="yc-stat"><span class="yc-val">${y.x50}</span><span class="yc-lbl">50s</span></div>
+          <div class="yc-stat"><span class="yc-val">${y.fours}</span><span class="yc-lbl">4s</span></div>
+          <div class="yc-stat"><span class="yc-val">${y.catches}</span><span class="yc-lbl">Ctch</span></div>
         </div>
-        <div class="yc-tours">
-          <span class="yc-tours-label">${y.tournaments} tournament${y.tournaments > 1 ? 's' : ''}:</span>
-          ${y.tournamentNames.map(t => `<span class="yc-tour-badge">${t}</span>`).join('')}
+        <div class="yc-tours" aria-label="Tournaments this season">
+          ${y.tournamentNames.map(n => `<span class="yc-tour-badge">${n}</span>`).join('')}
         </div>
       </div>
     `;
@@ -763,32 +423,37 @@ function renderYearlyCards() {
 }
 
 function renderGrowthCallout() {
-  const first = YEARLY_STATS[0];
-  const last  = YEARLY_STATS[YEARLY_STATS.length - 1];
-  const runsGrowth = Math.round(((last.runs - first.runs) / first.runs) * 100);
-  const avgGrowth  = (last.avg - first.avg).toFixed(1);
-  const srGrowth   = (last.sr  - first.sr ).toFixed(1);
+  const el = document.getElementById('growthCallout');
+  if (!el || DATA.yearly.length < 2) return;
+  const first = DATA.yearly[0];
+  const last  = DATA.yearly[DATA.yearly.length - 1];
+  const runsGrowth = Math.round(((last.runs - first.runs) / Math.max(first.runs, 1)) * 100);
+  const avgGrowth  = ((last.avg || 0) - (first.avg || 0)).toFixed(2);
+  const srGrowth   = ((last.sr  || 0) - (first.sr  || 0)).toFixed(2);
+  const matGrowth  = last.mat - first.mat;
 
-  document.getElementById('growthCallout').innerHTML = `
-    <div class="gc-inner">
-      <div class="gc-title">📈 3-Year Career Growth</div>
-      <div class="gc-stats">
-        <div class="gc-item">
-          <span class="gc-val gc-positive">+${runsGrowth}%</span>
-          <span class="gc-lbl">Run Volume<br><small>${first.runs} → ${last.runs}</small></span>
-        </div>
-        <div class="gc-item">
-          <span class="gc-val gc-positive">+${avgGrowth}</span>
-          <span class="gc-lbl">Batting Average<br><small>${first.avg} → ${last.avg}</small></span>
-        </div>
-        <div class="gc-item">
-          <span class="gc-val gc-positive">+${srGrowth}</span>
-          <span class="gc-lbl">Strike Rate<br><small>${first.sr} → ${last.sr}</small></span>
-        </div>
-        <div class="gc-item">
-          <span class="gc-val gc-positive">+${last.matches - first.matches}</span>
-          <span class="gc-lbl">More Matches<br><small>${first.matches} → ${last.matches}</small></span>
-        </div>
+  el.innerHTML = `
+    <div class="gc-title">📈 Career Growth — ${first.year} → ${last.year}</div>
+    <div class="gc-grid">
+      <div class="gc-item">
+        <span class="gc-num ${runsGrowth >= 0 ? 'pos' : 'neg'}">${runsGrowth >= 0 ? '+' : ''}${runsGrowth}%</span>
+        <div class="gc-desc">Run Volume</div>
+        <div class="gc-sub">${first.runs} → ${last.runs}</div>
+      </div>
+      <div class="gc-item">
+        <span class="gc-num ${parseFloat(avgGrowth) >= 0 ? 'pos' : 'neg'}">${parseFloat(avgGrowth) >= 0 ? '+' : ''}${avgGrowth}</span>
+        <div class="gc-desc">Batting Average</div>
+        <div class="gc-sub">${first.avg} → ${last.avg}</div>
+      </div>
+      <div class="gc-item">
+        <span class="gc-num ${parseFloat(srGrowth) >= 0 ? 'pos' : 'neg'}">${parseFloat(srGrowth) >= 0 ? '+' : ''}${srGrowth}</span>
+        <div class="gc-desc">Strike Rate</div>
+        <div class="gc-sub">${first.sr} → ${last.sr}</div>
+      </div>
+      <div class="gc-item">
+        <span class="gc-num ${matGrowth >= 0 ? 'pos' : 'neg'}">${matGrowth >= 0 ? '+' : ''}${matGrowth}</span>
+        <div class="gc-desc">More Matches</div>
+        <div class="gc-sub">${first.mat} → ${last.mat}</div>
       </div>
     </div>
   `;
@@ -799,182 +464,596 @@ function initYearly() {
   renderYearlyCards();
   renderGrowthCallout();
 
-  document.querySelectorAll('.ytab').forEach(btn => {
+  document.querySelectorAll('.ytab').forEach(btn =>
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.ytab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      document.querySelectorAll('.ytab').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+      btn.classList.add('active'); btn.setAttribute('aria-selected','true');
       buildYearlyChart(btn.dataset.metric);
+    })
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ANALYTICS CHARTS
+// ─────────────────────────────────────────────────────────────────────────
+const CHART_INSIGHTS = {
+  runs:      () => {
+    const top = [...DATA.tournaments].filter(t=>t.runs>0).sort((a,b)=>b.runs-a.runs).slice(0,3);
+    return `<strong>Runs by Tournament:</strong> Top scorer in <strong>${top[0]?.name}</strong> with ${top[0]?.runs} runs, followed by ${top[1]?.name} (${top[1]?.runs}) and ${top[2]?.name} (${top[2]?.runs}).`;
+  },
+  avg:       () => {
+    const top = [...DATA.tournaments].filter(t=>t.avg>0&&t.mat>1).sort((a,b)=>b.avg-a.avg).slice(0,3);
+    return `<strong>Batting Average:</strong> Highest average in <strong>${top[0]?.name}</strong> at ${top[0]?.avg}, showcasing consistency over multiple matches.`;
+  },
+  sr:        () => {
+    const top = [...DATA.tournaments].filter(t=>t.sr>0&&t.mat>1).sort((a,b)=>b.sr-a.sr).slice(0,3);
+    return `<strong>Strike Rate:</strong> Best strike rate in <strong>${top[0]?.name}</strong> at ${top[0]?.sr}, demonstrating explosive batting when needed.`;
+  },
+  bowling:   () => {
+    const active = DATA.tournaments.filter(t=>t.econ>0);
+    const best   = [...active].sort((a,b)=>a.econ-b.econ)[0];
+    return `<strong>Bowling Economy:</strong> Most economical in <strong>${best?.name}</strong> at ${best?.econ} RPO. Career economy: ${DATA.career.econ}.`;
+  },
+  boundaries: () => {
+    const top = [...DATA.tournaments].filter(t=>t.fours>0).sort((a,b)=>b.fours-a.fours).slice(0,3);
+    return `<strong>Boundaries:</strong> Hit most fours (${top[0]?.fours}) in <strong>${top[0]?.name}</strong>. Career: ${DATA.career.fours} fours, ${DATA.career.sixes} sixes.`;
+  },
+  radar: () => `<strong>All-Round Radar:</strong> Five-dimension performance profile benchmarked against U13 peer standards. Batting average, run volume, catches, wickets, and strike rate.`,
+};
+
+let mainChart = null;
+
+function buildChart(type) {
+  const ctx = document.getElementById('mainChart')?.getContext('2d');
+  if (!ctx) return;
+  if (mainChart) { mainChart.destroy(); mainChart = null; }
+
+  const insight = document.getElementById('chartInsight');
+  if (insight) insight.innerHTML = CHART_INSIGHTS[type]?.() ?? '';
+
+  const T   = DATA.tournaments.filter(t => t.mat > 0 && t.formats[0] !== 'League');
+  const labs = T.map(t => {
+    const words = t.name.split(' ');
+    return words.length > 3 ? words.slice(0,3).join(' ') + '…' : t.name;
+  });
+
+  // ── RADAR ──
+  if (type === 'radar') {
+    const C = DATA.career;
+    // Benchmarks: U13 competitive peer
+    const pct = (v, bench) => Math.min(+(v / bench * 100).toFixed(1), 100);
+    mainChart = new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: ['Batting Avg', 'Strike Rate', 'Run Volume', 'Catches', 'Wickets'],
+        datasets: [{
+          label: 'Bhadra',
+          data: [
+            pct(C.avg,    35),
+            pct(C.sr,     80),
+            pct(C.runs,   500),
+            pct(C.catches,30),
+            pct(C.wickets,15),
+          ],
+          fill: true,
+          backgroundColor: 'rgba(0,212,170,.15)',
+          borderColor: '#00d4aa',
+          pointBackgroundColor: '#00d4aa',
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          borderWidth: 2,
+          pointRadius: 5,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        animation: { duration: 700 },
+        plugins: { legend: { display: false }, tooltip: TOOLTIP },
+        scales: {
+          r: {
+            min: 0, max: 100,
+            ticks: { stepSize: 25, color: '#4d6480', backdropColor: 'transparent', font:{ size:10 } },
+            grid: { color: 'rgba(255,255,255,.08)' },
+            pointLabels: { color: '#f0f5ff', font:{ size:12, weight:'600' } },
+            angleLines: { color: 'rgba(255,255,255,.08)' },
+          },
+        },
+      },
     });
+    return;
+  }
+
+  // ── BAR CHARTS ──
+  const cfgs = {
+    runs: {
+      data: T.map(t => t.runs),
+      color: '#3b82f6',
+      label: 'Runs',
+    },
+    avg: {
+      data: T.map(t => t.avg ?? 0),
+      color: '#00d4aa',
+      label: 'Batting Average',
+    },
+    sr: {
+      data: T.map(t => t.sr ?? 0),
+      color: '#f5c842',
+      label: 'Strike Rate',
+    },
+    bowling: {
+      data: T.map(t => t.econ ?? 0),
+      color: '#8b5cf6',
+      label: 'Economy Rate',
+    },
+    boundaries: {
+      // Stacked bar: fours + sixes
+      data: null,
+      color: '#f97316',
+      label: 'Boundaries',
+    },
+  };
+
+  if (type === 'boundaries') {
+    mainChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labs,
+        datasets: [
+          {
+            label: 'Fours',
+            data: T.map(t => t.fours ?? 0),
+            backgroundColor: 'rgba(249,115,22,.7)',
+            borderColor: '#f97316',
+            borderWidth: 1,
+            borderRadius: { topLeft:0, topRight:0, bottomLeft:6, bottomRight:6 },
+          },
+          {
+            label: 'Sixes',
+            data: T.map(t => t.sixes ?? 0),
+            backgroundColor: 'rgba(245,200,66,.7)',
+            borderColor: '#f5c842',
+            borderWidth: 1,
+            borderRadius: { topLeft:6, topRight:6, bottomLeft:0, bottomRight:0 },
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        animation: { duration: 600 },
+        plugins: {
+          legend: { display: true, position: 'top', labels: { color: '#8ba3c7', boxWidth: 12, padding: 16 } },
+          tooltip: { ...TOOLTIP, callbacks: { title: items => T[items[0].dataIndex]?.name } },
+        },
+        scales: {
+          x: { stacked: true, ticks: { color: '#4d6480', font:{ size:10 }, maxRotation:50, minRotation:50 }, grid: GRID },
+          y: { stacked: true, ticks: TICK, grid: GRID },
+        },
+      },
+    });
+    return;
+  }
+
+  const cfg = cfgs[type];
+
+  const gradFn = (color) => {
+    const g = ctx.createLinearGradient(0, 0, 0, 340);
+    g.addColorStop(0, color + 'bb');
+    g.addColorStop(1, color + '11');
+    return g;
+  };
+
+  mainChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labs,
+      datasets: [{
+        label: cfg.label,
+        data: cfg.data,
+        backgroundColor: gradFn(cfg.color),
+        borderColor: cfg.color,
+        borderWidth: 2,
+        borderRadius: 7,
+        borderSkipped: false,
+        hoverBackgroundColor: cfg.color + 'cc',
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      animation: { duration: 600, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...TOOLTIP, callbacks: {
+          title: items => T[items[0].dataIndex]?.name ?? '',
+          label: item  => ` ${cfg.label}: ${item.raw}`,
+        }},
+      },
+      scales: {
+        x: { ticks: { color: '#4d6480', font:{ size:10 }, maxRotation: 50, minRotation: 50 }, grid: GRID },
+        y: { ticks: TICK, grid: GRID },
+      },
+    },
   });
 }
 
-// ── STATS DEEP DIVE ───────────────────────────────────────────────────────────
+function initCharts() {
+  buildChart('runs');
+  document.querySelectorAll('.ctab').forEach(btn =>
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.ctab').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+      btn.classList.add('active'); btn.setAttribute('aria-selected','true');
+      buildChart(btn.dataset.chart);
+    })
+  );
+}
 
+// ─────────────────────────────────────────────────────────────────────────
+// FORMAT BADGE helper
+// ─────────────────────────────────────────────────────────────────────────
+function fmtBadge(formats) {
+  const map = {
+    'T20':    'fmt-t20',
+    '1 DAY':  'fmt-1day',
+    'YOUTH':  'fmt-youth',
+    'TEST':   'fmt-test',
+    'League': 'fmt-league',
+  };
+  const labels = formats.map(f => {
+    const cls = map[f] || 'fmt-mix';
+    return `<span class="fmt-badge ${cls}">${f}</span>`;
+  }).join('');
+  return labels;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// TOURNAMENTS
+// ─────────────────────────────────────────────────────────────────────────
+function buildTournamentCard(t) {
+  const hasSeries = t.series && t.series.length > 0;
+
+  const seriesHtml = hasSeries
+    ? `<div class="t-series-list">
+        ${t.series.map(s => {
+          const b = s.batting, bw = s.bowling;
+          const parts = [];
+          if (b.mat)   parts.push(`<span class="t-series-stat"><b>${b.mat}</b> mat</span>`);
+          if (b.runs)  parts.push(`<span class="t-series-stat"><b>${b.runs}</b> runs</span>`);
+          if (b.ave && b.ave !== '—') parts.push(`<span class="t-series-stat"><b>${b.ave}</b> avg</span>`);
+          if (b.hs)    parts.push(`<span class="t-series-stat"><b>${b.hs}</b> HS</span>`);
+          if (bw.wkts) parts.push(`<span class="t-series-stat"><b>${bw.wkts}</b> wkts</span>`);
+          if (bw.catches > 0) parts.push(`<span class="t-series-stat"><b>${bw.catches}</b> ctch</span>`);
+          return `
+            <div class="t-series-row">
+              <div class="t-series-head">
+                <span class="t-series-name">${s.seriesName}</span>
+                ${s.year ? `<span class="t-series-year">${s.year}</span>` : ''}
+              </div>
+              <div class="t-series-stats">${parts.join('')}</div>
+            </div>`;
+        }).join('')}
+      </div>`
+    : '';
+
+  const zeroHtml = t.isZero
+    ? `<p class="t-zero">No recorded activity</p>`
+    : '';
+
+  const miniStats = !t.isZero ? `
+    <div class="t-mini-stats">
+      <div class="t-stat"><strong>${t.mat}</strong><span>Matches</span></div>
+      <div class="t-stat"><strong>${t.runs}</strong><span>Runs</span></div>
+      <div class="t-stat"><strong>${t.avg ?? '—'}</strong><span>Avg</span></div>
+      <div class="t-stat"><strong>${t.hs > 0 ? t.hs : '—'}</strong><span>HS</span></div>
+      <div class="t-stat"><strong>${t.catches}</strong><span>Ctch</span></div>
+    </div>
+  ` : '';
+
+  return `
+    <div class="t-card fade-up" role="listitem" aria-label="${t.name}">
+      <div class="t-card-head" onclick="toggleCard(this.closest('.t-card'))">
+        <div>
+          <div class="t-name">${t.name}</div>
+          <div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap">
+            ${fmtBadge(t.formats)}
+          </div>
+        </div>
+        ${!t.isZero ? `<span class="t-chevron" aria-hidden="true">▼</span>` : ''}
+      </div>
+      ${miniStats}
+      ${zeroHtml}
+      <div class="t-expand">
+        ${hasSeries ? `
+          <div style="padding:.25rem 1.25rem .25rem;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3)">
+            Series Breakdown
+          </div>
+          ${seriesHtml}
+        ` : ''}
+        ${!t.isZero && !hasSeries ? `
+          <div style="padding:.5rem 1.25rem 1rem;font-size:.78rem;color:var(--ink3);font-style:italic">
+            Series data not available
+          </div>
+        ` : ''}
+        <div class="t-expand-detail" style="padding:.75rem 1.25rem 1.25rem">
+          <table style="width:100%;font-size:.78rem;border-collapse:collapse">
+            <tr><td style="color:var(--ink3);padding:.25rem 0">Innings</td><td style="font-weight:600">${t.inns}</td>
+                <td style="color:var(--ink3);padding:.25rem 0 .25rem 1.5rem">Not Outs</td><td style="font-weight:600">${t.no}</td></tr>
+            <tr><td style="color:var(--ink3);padding:.25rem 0">Balls Faced</td><td style="font-weight:600">${t.balls || '—'}</td>
+                <td style="color:var(--ink3);padding:.25rem 0 .25rem 1.5rem">Strike Rate</td><td style="font-weight:600">${t.sr ?? '—'}</td></tr>
+            <tr><td style="color:var(--ink3);padding:.25rem 0">Fours</td><td style="font-weight:600">${t.fours || 0}</td>
+                <td style="color:var(--ink3);padding:.25rem 0 .25rem 1.5rem">Sixes</td><td style="font-weight:600">${t.sixes || 0}</td></tr>
+            <tr><td style="color:var(--ink3);padding:.25rem 0">Wickets</td><td style="font-weight:600">${t.wkts}</td>
+                <td style="color:var(--ink3);padding:.25rem 0 .25rem 1.5rem">Economy</td><td style="font-weight:600">${t.econ ?? '—'}</td></tr>
+            ${t.bbf && t.bbf !== '0/0' ? `<tr><td style="color:var(--ink3);padding:.25rem 0">Best Bowling</td><td style="font-weight:600;color:var(--teal)" colspan="3">${t.bbf}</td></tr>` : ''}
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window.toggleCard = function(card) {
+  if (!card) return;
+  card.classList.toggle('open');
+};
+
+function renderTournaments(search = '', fmt = '') {
+  const grid = document.getElementById('tournamentGrid');
+  if (!grid) return;
+
+  let filtered = DATA.tournaments;
+  if (search)
+    filtered = filtered.filter(t => t.name.toLowerCase().includes(search.toLowerCase()));
+  if (fmt)
+    filtered = filtered.filter(t => t.formats.some(f => f === fmt));
+
+  // Update count label
+  const countEl = document.getElementById('tourneyCount');
+  if (countEl) countEl.textContent = filtered.length;
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:4rem;color:var(--ink3);font-size:.875rem">No tournaments match your filters.</div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(buildTournamentCard).join('');
+  initFadeUp();
+}
+
+function initTournamentFilters() {
+  const search = document.getElementById('tourneySearch');
+  const select = document.getElementById('formatFilter');
+  let activeBtn = document.querySelector('.fmt-tab.active');
+
+  const refresh = () => renderTournaments(search?.value ?? '', select?.value ?? '');
+
+  search?.addEventListener('input', refresh);
+  select?.addEventListener('change', () => {
+    // Sync format pills with dropdown
+    const val = select.value;
+    document.querySelectorAll('.fmt-tab').forEach(b => b.classList.remove('active'));
+    const match = [...document.querySelectorAll('.fmt-tab')].find(b => b.dataset.fmt === val);
+    if (match) match.classList.add('active');
+    refresh();
+  });
+
+  document.querySelectorAll('.fmt-tab').forEach(btn =>
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.fmt-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (select) select.value = btn.dataset.fmt;
+      refresh();
+    })
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// STATS DEEP DIVE
+// ─────────────────────────────────────────────────────────────────────────
 function tableWrap(html) {
   return `<div class="table-wrap"><table class="data-table">${html}</table></div>`;
 }
 
-function renderBatting() {
-  const headers = ['Tournament','Format','M','Inn','NO','Runs','Balls','Avg','SR','HS','50s'];
-  const head = '<thead><tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead>';
-  const body = '<tbody>' + BATTING_ROWS.map(r => {
-    const avg = parseFloat(r[7]);
-    const sr  = parseFloat(r[8]);
+function renderBattingTable() {
+  // Collect all series_type rows from DATA.tournaments (each formatRow)
+  const rows = [];
+  DATA.tournaments.forEach(t => {
+    t.formatRows.forEach(r => {
+      if (r.batting.mat === 0) return;
+      rows.push({ tname: t.name, format: r.format, b: r.batting });
+    });
+  });
+
+  const head = `<thead><tr>
+    <th>Tournament</th><th>Format</th><th>M</th><th>Inn</th><th>NO</th>
+    <th>Runs</th><th>Balls</th><th>Avg</th><th>SR</th><th>HS</th>
+    <th>50s</th><th>25s</th><th>0s</th><th>4s</th><th>6s</th>
+  </tr></thead>`;
+
+  const body = '<tbody>' + rows.map(r => {
+    const b   = r.b;
+    const avg = parseFloat(b.ave);
+    const sr  = parseFloat(b.sr);
     return `<tr>
-      <td>${r[0]}</td>
-      <td>${r[1]}</td>
-      <td>${r[2]}</td>
-      <td>${r[3]}</td>
-      <td>${r[4]}</td>
-      <td class="${r[5] >= 100 ? 'td-good' : r[5] >= 50 ? '' : ''}">${r[5]}</td>
-      <td>${r[6]}</td>
-      <td class="${avg >= 50 ? 'td-good' : avg >= 30 ? '' : avg < 10 ? 'td-dim' : ''}">${r[7]}</td>
-      <td class="${sr >= 80 ? 'td-good' : sr >= 50 ? '' : sr < 25 ? 'td-dim' : ''}">${r[8]}</td>
-      <td class="${r[9] >= 50 ? 'td-good' : ''}">${r[9]}</td>
-      <td>${r[10]}</td>
+      <td>${r.tname}</td>
+      <td>${fmtBadge([r.format])}</td>
+      <td>${b.mat}</td><td>${b.inns}</td><td>${b.no}</td>
+      <td class="${b.runs >= 200 ? 'td-great' : b.runs >= 100 ? 'td-good' : ''}">${b.runs}</td>
+      <td>${b.balls || '—'}</td>
+      <td class="${avg >= 50 ? 'td-great' : avg >= 30 ? 'td-good' : avg > 0 && avg < 10 ? 'td-dim' : ''}">${b.ave}</td>
+      <td class="${sr >= 90 ? 'td-great' : sr >= 60 ? 'td-good' : sr > 0 && sr < 30 ? 'td-dim' : ''}">${b.sr}</td>
+      <td class="${b.hs >= 50 ? 'td-good' : ''}">${b.hs}</td>
+      <td class="${b.x50 > 0 ? 'td-good' : ''}">${b.x50}</td>
+      <td>${b.x25}</td>
+      <td class="${b.x0 > 3 ? 'td-dim' : ''}">${b.x0}</td>
+      <td>${b.fours}</td><td>${b.sixes}</td>
     </tr>`;
   }).join('') + '</tbody>';
+
   document.getElementById('statsPanel').innerHTML = tableWrap(head + body);
 }
 
-function renderBowling() {
-  const headers = ['Tournament','Format','M','Inn','Overs','Runs','Wkts','Best','Mdns','Econ'];
-  const head = '<thead><tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead>';
-  const body = '<tbody>' + BOWLING_ROWS.map(r => {
-    const econ    = parseFloat(r[9]);
-    const econFmt = (r[4] === '0.0' || r[4] === '0') ? '—' : r[9];
-    const econCls = r[4] === '0.0' ? '' : econ < 5 ? 'td-good' : econ > 8 ? 'td-dim' : '';
+function renderBowlingTable() {
+  const rows = [];
+  DATA.tournaments.forEach(t => {
+    t.formatRows.forEach(r => {
+      if (r.bowling.mat === 0 && r.bowling.overs === '0.0') return;
+      rows.push({ tname: t.name, format: r.format, bw: r.bowling });
+    });
+  });
+
+  const head = `<thead><tr>
+    <th>Tournament</th><th>Format</th><th>M</th><th>Inn</th>
+    <th>Overs</th><th>Runs</th><th>Wkts</th><th>BBF</th>
+    <th>Mdns</th><th>Ave</th><th>Econ</th><th>Wides</th><th>Catches</th>
+  </tr></thead>`;
+
+  const body = '<tbody>' + rows.map(r => {
+    const bw  = r.bw;
+    const ec  = parseFloat(bw.econ);
+    const noBowl = bw.overs === '0.0' || bw.overs === '0';
     return `<tr>
-      <td>${r[0]}</td>
-      <td>${r[1]}</td>
-      <td>${r[2]}</td>
-      <td>${r[3]}</td>
-      <td>${r[4]}</td>
-      <td>${r[4] === '0.0' ? '—' : r[5]}</td>
-      <td class="${r[6] > 0 ? 'td-good' : 'td-dim'}">${r[6]}</td>
-      <td class="${r[6] > 0 ? 'td-good' : ''}">${r[7]}</td>
-      <td>${r[4] === '0.0' ? '—' : r[8]}</td>
-      <td class="${econCls}">${econFmt}</td>
+      <td>${r.tname}</td>
+      <td>${fmtBadge([r.format])}</td>
+      <td>${bw.mat}</td><td>${bw.inns}</td>
+      <td>${noBowl ? '—' : bw.overs}</td>
+      <td>${noBowl ? '—' : bw.bowlRuns}</td>
+      <td class="${bw.wkts > 0 ? 'td-good' : 'td-dim'}">${bw.wkts}</td>
+      <td class="${bw.wkts > 0 ? 'td-good' : ''}">${bw.wkts > 0 ? bw.bbf : '—'}</td>
+      <td>${noBowl ? '—' : bw.mdns}</td>
+      <td>${noBowl ? '—' : bw.bowlAve}</td>
+      <td class="${!noBowl && ec < 5 ? 'td-great' : !noBowl && ec < 7 ? 'td-good' : !noBowl && ec > 10 ? 'td-dim' : ''}">${noBowl ? '—' : bw.econ}</td>
+      <td>${bw.wides}</td>
+      <td class="${bw.catches > 0 ? 'td-good' : ''}">${bw.catches}</td>
     </tr>`;
   }).join('') + '</tbody>';
+
   document.getElementById('statsPanel').innerHTML = tableWrap(head + body);
 }
 
-function renderKeeping() {
-  const headers = ['Tournament','Format','Matches','Catches','Catches/Match'];
-  const head = '<thead><tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead>';
-  const body = '<tbody>' + KEEPING_ROWS.map(r => {
-    const cpm = r[2] > 0 ? (r[3] / r[2]).toFixed(2) : '—';
+function renderKeepingTable() {
+  const rows = DATA.tournaments
+    .filter(t => t.catches > 0)
+    .map(t => ({ name: t.name, mat: t.mat, catches: t.catches }));
+
+  const head = `<thead><tr>
+    <th>Tournament</th><th>Matches</th><th>Catches</th><th>Catches/Match</th>
+  </tr></thead>`;
+
+  const body = '<tbody>' + rows.map(r => {
+    const cpm = r.mat > 0 ? (r.catches / r.mat).toFixed(2) : '—';
     return `<tr>
-      <td>${r[0]}</td>
-      <td>${r[1]}</td>
-      <td>${r[2]}</td>
-      <td class="${r[3] >= 5 ? 'td-good' : ''}">${r[3]}</td>
+      <td>${r.name}</td>
+      <td>${r.mat}</td>
+      <td class="${r.catches >= 5 ? 'td-good' : ''}">${r.catches}</td>
       <td class="${parseFloat(cpm) >= 0.5 ? 'td-good' : ''}">${cpm}</td>
     </tr>`;
   }).join('') + '</tbody>';
+
   document.getElementById('statsPanel').innerHTML = tableWrap(head + body);
 }
 
-function renderCareerSummary() {
+function renderCareerTable() {
+  const C = DATA.career;
   const rows = [
-    ['Total Matches', CAREER.matches],
-    ['Batting Innings', CAREER.innings],
-    ['Not Outs', CAREER.notOuts],
-    ['Career Runs', CAREER.runs],
-    ['Batting Average', CAREER.avg],
-    ['Strike Rate', CAREER.sr],
-    ['Highest Score', CAREER.hs],
-    ['Half Centuries (50+)', CAREER.fifties],
-    ['Quarter Centuries (25+)', CAREER.twentyFives],
-    ['Ducks', CAREER.ducks],
-    ['Fours Hit', CAREER.fours],
-    ['Sixes Hit', CAREER.sixes],
-    ['Bowling Overs', CAREER.overs],
-    ['Wickets Taken', CAREER.wickets],
-    ['Bowling Economy', CAREER.econ],
-    ['Bowling Average', CAREER.bowlAvg],
-    ['Catches (Keeping/Field)', CAREER.catches],
-    ['Wides Bowled', CAREER.wides],
-    ['Tournaments Played', CAREER.tournaments],
+    ['Total Matches',          C.matches],
+    ['Batting Innings',        C.innings],
+    ['Not Outs',               C.notOuts],
+    ['Career Runs',            C.runs],
+    ['Batting Average',        C.avg],
+    ['Strike Rate',            C.sr],
+    ['Highest Score',          C.hs],
+    ['Half Centuries (50+)',   C.x50],
+    ['Quarter Centuries (25+)',C.x25],
+    ['Ducks (0s)',             C.ducks],
+    ['Fours Hit',              C.fours],
+    ['Sixes Hit',              C.sixes],
+    ['Bowling Overs',          C.overs],
+    ['Bowling Runs Conceded',  C.bowlRuns],
+    ['Wickets Taken',          C.wickets],
+    ['Bowling Economy',        C.econ],
+    ['Bowling Average',        C.bowlAvg || '—'],
+    ['Catches',                C.catches],
+    ['Wides Bowled',           C.wides],
+    ['Tournaments Played',     C.tournaments],
   ];
-  const head = '<thead><tr><th>Metric</th><th>Value</th></tr></thead>';
-  const body = '<tbody>' + rows.map(([k, v]) => `
-    <tr><td>${k}</td><td style="color:var(--teal);font-weight:700">${v}</td></tr>
+
+  const head = `<thead><tr><th>Metric</th><th>Value</th></tr></thead>`;
+  const body = '<tbody>' + rows.map(([k,v]) => `
+    <tr>
+      <td style="color:var(--ink2)">${k}</td>
+      <td style="color:var(--teal);font-weight:700;font-family:'Space Grotesk',sans-serif">${v}</td>
+    </tr>
   `).join('') + '</tbody>';
+
   document.getElementById('statsPanel').innerHTML = tableWrap(head + body);
 }
 
 function initStats() {
-  renderBatting();
-  document.querySelectorAll('.snav').forEach(btn => {
+  renderBattingTable();
+  document.querySelectorAll('.snav').forEach(btn =>
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.snav').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      document.querySelectorAll('.snav').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+      btn.classList.add('active'); btn.setAttribute('aria-selected','true');
       const tab = btn.dataset.tab;
-      if (tab === 'batting')  renderBatting();
-      if (tab === 'bowling')  renderBowling();
-      if (tab === 'keeping')  renderKeeping();
-      if (tab === 'career')   renderCareerSummary();
-    });
-  });
+      if (tab === 'batting')  renderBattingTable();
+      if (tab === 'bowling')  renderBowlingTable();
+      if (tab === 'keeping')  renderKeepingTable();
+      if (tab === 'career')   renderCareerTable();
+    })
+  );
 }
 
-// ── PROFILE ───────────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────
+// PROFILE
+// ─────────────────────────────────────────────────────────────────────────
 function renderProfile() {
-  document.getElementById('profileDetails').innerHTML = PROFILE.map(p => `
-    <div class="pd-item">
-      <div class="pd-label">${p.label}</div>
-      <div class="pd-value">${p.value}</div>
+  const el = document.getElementById('profileDetails');
+  if (!el) return;
+  const P = PLAYER;
+  const C = DATA.career;
+  const fields = [
+    { label:'Player Name',      value: P.name },
+    { label:'CricClubs ID',     value: P.cricclubsId },
+    { label:'Current Team',     value: P.team },
+    { label:'Playing Role',     value: P.role },
+    { label:'Jersey Number',    value: `#${P.jersey}` },
+    { label:'Batting Style',    value: P.battingStyle },
+    { label:'Bowling Style',    value: P.bowlingStyle },
+    { label:'Seasons Active',   value: `${DATA.yearly[0]?.year ?? '—'} – ${DATA.yearly[DATA.yearly.length-1]?.year ?? '—'}` },
+    { label:'Career Runs',      value: C.runs.toLocaleString() },
+    { label:'Career Average',   value: C.avg },
+  ];
+
+  el.innerHTML = fields.map(f => `
+    <div class="pd-item fade-up" role="listitem">
+      <div class="pd-label">${f.label}</div>
+      <div class="pd-value">${f.value}</div>
     </div>
   `).join('');
+
+  // Update team in hero
+  const teamEl = document.getElementById('heroTeam');
+  if (teamEl) teamEl.textContent = `${P.team} · Jersey #${P.jersey}`;
+
+  const profileTeam = document.getElementById('profileTeam');
+  if (profileTeam) profileTeam.textContent = P.team;
 }
 
-// ── FOOTER ────────────────────────────────────────────────────────────────────
-
-function initFooter() {
-  document.getElementById('year').textContent = new Date().getFullYear();
+// ─────────────────────────────────────────────────────────────────────────
+// FADE-UP ANIMATION
+// ─────────────────────────────────────────────────────────────────────────
+function initFadeUp() {
+  const els = document.querySelectorAll('.fade-up:not(.visible)');
+  const io  = new IntersectionObserver(entries => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('visible'), i * 50);
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: .08 });
+  els.forEach(el => io.observe(el));
 }
 
-// ── BOOT ──────────────────────────────────────────────────────────────────────
-// firebase-data.js (loaded as a module in index.html) fetches Firestore and
-// dispatches 'firestoreReady' on document. We wait for that before rendering.
-// If Firestore is not configured yet (placeholder config), firebase-data.js
-// fires the event with ok:false and we fall through to the static data above.
-
-function bootSite() {
-  initCanvas();
-  initNav();
-  initCountUps();
-  renderOverview();
-  initYearly();
-  initCharts();
-  initTournaments();
-  initStats();
-  renderProfile();
-  initFooter();
-  setTimeout(initFadeUp, 200);
-}
-
-document.addEventListener('firestoreReady', (e) => {
-  if (e.detail && e.detail.ok) {
-    // Merge live Firestore data into our globals
-    if (e.detail.career)      CAREER      = e.detail.career;
-    if (e.detail.tournaments) TOURNAMENTS = e.detail.tournaments;
-    if (e.detail.yearly)      YEARLY_STATS = e.detail.yearly;
-  }
-  // Whether data came from Firestore or the static fallback, boot the site
-  bootSite();
-});
-
-// Safety net: if firebase-data.js fails to load at all (e.g. no network,
-// script blocked), boot with static data after 4 seconds
-let _booted = false;
-document.addEventListener('firestoreReady', () => { _booted = true; });
-setTimeout(() => {
-  if (!_booted) {
-    console.warn('[script.js] firestoreReady never fired — booting with static data');
-    bootSite();
-  }
-}, 4000);
+// ─────────────────────────────────────────────────────────────────────────
+// DONE — all functions defined above, wired in initData()
+// ─────────────────────────────────────────────────────────────────────────

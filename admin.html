@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<!--
+  admin.html — Bhadra Cricket Portfolio Admin
+  LOCAL MODE: works entirely from localStorage — no Firebase needed.
+  Data model mirrors data.js RAW_SERIES exactly.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Score Admin · Bhadra Cricket #29</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#050c18;--bg2:#080f1f;--bg3:#0b1428;
+  --glass:rgba(255,255,255,0.04);--glass-b:rgba(255,255,255,0.09);
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.16);
+  --ink1:#f0f5ff;--ink2:#8ba3c7;--ink3:#4d6480;
+  --teal:#00d4aa;--gold:#f5c842;--blue:#3b82f6;
+  --red:#ef4444;--orange:#f97316;--purple:#8b5cf6;
+  --r:12px;--r2:8px;
+}
+html{font-size:16px}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink1);min-height:100vh}
+button,input,select,textarea{font-family:inherit;cursor:pointer}
+input,select,textarea{cursor:text}
+.wrap{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+/* ── SIDEBAR ── */
+.sb{background:var(--bg2);border-right:1px solid var(--border);padding:1.25rem 1rem;display:flex;flex-direction:column;gap:.2rem;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sb-brand{font-family:'Space Grotesk',sans-serif;font-size:.95rem;font-weight:800;margin-bottom:1.25rem;padding:.4rem .75rem;display:flex;align-items:center;gap:.5rem}
+.sb-brand span{color:var(--gold)}
+.nav-sec{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);padding:.6rem .75rem .2rem}
+.nav-btn{display:flex;align-items:center;gap:.5rem;padding:.6rem .75rem;border-radius:var(--r2);font-size:.8rem;font-weight:500;color:var(--ink2);border:none;background:none;width:100%;text-align:left;transition:all .15s}
+.nav-btn:hover{background:var(--glass-b);color:var(--ink1)}
+.nav-btn.act{background:rgba(0,212,170,.12);color:var(--teal);font-weight:600}
+.nav-div{height:1px;background:var(--border);margin:.4rem 0}
+.sb-badge{margin-top:auto;padding:.5rem .75rem;border-radius:var(--r2);background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.25);font-size:.7rem;color:var(--orange);font-weight:600;text-align:center}
+/* ── MAIN ── */
+.main{padding:2rem;overflow-y:auto}
+.pg{display:none}.pg.act{display:block}
+.ph{margin-bottom:1.75rem}.ph h1{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:.2rem}.ph p{font-size:.83rem;color:var(--ink2)}
+/* ── CARD ── */
+.card{background:var(--glass);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:1.25rem}
+.ctitle{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--teal);margin-bottom:1.25rem}
+/* ── FORM ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:.85rem}
+.fld{display:flex;flex-direction:column;gap:4px}
+.fld.full{grid-column:1/-1}
+.fld label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2)}
+.fld label .req{color:var(--red);margin-left:2px}
+.fld input,.fld select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--ink1);padding:9px 11px;font-size:.85rem;transition:border-color .15s;-webkit-appearance:none}
+.fld input:focus,.fld select:focus{outline:none;border-color:var(--teal)}
+.fld input.err,.fld select.err{border-color:var(--red)!important}
+.fld .hint{font-size:.7rem;color:var(--ink3)}
+.fld .emsg{font-size:.7rem;color:var(--red);display:none}
+.fld.herr .emsg{display:block}
+.fld select option{background:var(--bg2)}
+.div-label{display:flex;align-items:center;gap:.6rem;color:var(--ink2);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;margin:1.25rem 0 .85rem}
+.div-label::before,.div-label::after{content:'';flex:1;height:1px;background:var(--border)}
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:.35rem;padding:9px 18px;border-radius:var(--r2);font-size:.82rem;font-weight:600;border:none;cursor:pointer;transition:opacity .15s,transform .1s;white-space:nowrap}
+.btn:hover{opacity:.88}.btn:active{transform:scale(.98)}.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-p{background:var(--teal);color:#050c18}
+.btn-b{background:var(--blue);color:#fff}
+.btn-g{background:var(--glass-b);color:var(--ink1);border:1px solid var(--border2)}
+.btn-r{background:var(--red);color:#fff}
+.btn-o{background:var(--orange);color:#050c18}
+.btn-full{width:100%;justify-content:center}
+.btn-sm{padding:6px 12px;font-size:.75rem;border-radius:6px}
+.brow{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem}
+/* ── TOAST ── */
+.toast{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;padding:11px 18px;border-radius:var(--r);font-size:.83rem;font-weight:600;transform:translateY(80px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;max-width:340px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{background:rgba(0,212,170,.14);color:var(--teal);border:1px solid rgba(0,212,170,.3)}
+.toast.err{background:rgba(239,68,68,.14);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.toast.warn{background:rgba(249,115,22,.14);color:var(--orange);border:1px solid rgba(249,115,22,.3)}
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.8rem}
+.tbl th{padding:7px 10px;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+.tbl td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:middle}
+.tbl tr:hover td{background:rgba(255,255,255,.02)}
+.tbl tr:last-child td{border-bottom:none}
+/* ── BADGES ── */
+.fb{font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;display:inline-block}
+.ft20{background:rgba(59,130,246,.15);color:var(--blue);border:1px solid rgba(59,130,246,.25)}
+.f1d{background:rgba(0,212,170,.1);color:var(--teal);border:1px solid rgba(0,212,170,.2)}
+.fyo{background:rgba(139,92,246,.1);color:var(--purple);border:1px solid rgba(139,92,246,.2)}
+.fts{background:rgba(249,115,22,.1);color:var(--orange);border:1px solid rgba(249,115,22,.2)}
+.flg{background:rgba(255,255,255,.05);color:var(--ink3);border:1px solid var(--border)}
+/* ── STAT PILLS ── */
+.spills{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.4rem}
+.sp{font-size:.7rem;padding:2px 9px;border-radius:99px;background:var(--glass-b);border:1px solid var(--border);color:var(--ink2)}
+.sp b{color:var(--ink1)}
+/* ── SERIES LIST ── */
+.slist{display:flex;flex-direction:column;gap:.4rem;margin-top:.6rem}
+.srow{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--r2);padding:.75rem 1rem}
+.srow-h{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.sname{font-weight:600;font-size:.82rem}
+.syear{font-size:.7rem;font-weight:700;color:var(--gold);background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.2);padding:2px 7px;border-radius:4px}
+.sstats{display:flex;gap:1rem;margin-top:.35rem;flex-wrap:wrap}
+.sst{font-size:.72rem;color:var(--ink2)}
+.sst b{color:var(--ink1)}
+/* ── INNER TABS ── */
+.itabs{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:1.25rem}
+.itab{padding:6px 13px;border-radius:var(--r2);font-size:.78rem;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--ink2);cursor:pointer;transition:all .15s}
+.itab:hover{border-color:var(--border2);color:var(--ink1)}
+.itab.act{background:var(--blue);color:#fff;border-color:var(--blue)}
+.ipanel{display:none}.ipanel.act{display:block}
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:1000;padding:1rem}
+.overlay.hidden{display:none}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.75rem;max-width:400px;width:100%}
+.modal h3{font-size:1.05rem;margin-bottom:.4rem}
+.modal p{color:var(--ink2);font-size:.83rem;line-height:1.6;margin-bottom:1.25rem}
+.modal-btns{display:flex;gap:.6rem}
+.modal-btns .btn{flex:1;justify-content:center}
+/* ── SEARCH ── */
+.sr{display:flex;gap:.6rem;margin-bottom:1.1rem;align-items:center}
+.si{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);color:var(--ink1);padding:8px 13px;font-size:.83rem}
+.si:focus{outline:none;border-color:var(--teal)}
+/* ── EMPTY ── */
+.empty{text-align:center;padding:3rem;color:var(--ink3);font-size:.83rem}
+.empty .ico{font-size:2.5rem;margin-bottom:.6rem}
+/* ── RESPONSIVE ── */
+@media(max-width:760px){.wrap{grid-template-columns:1fr}.sb{display:none}.g4{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.g2,.g3,.g4{grid-template-columns:1fr}.fld.full{grid-column:1}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- SIDEBAR -->
+<aside class="sb">
+  <div class="sb-brand">🏏 <span>Admin</span> · BP29</div>
+  <span class="nav-sec">Data</span>
+  <button class="nav-btn act" data-p="dashboard" onclick="nav('dashboard')"><span>📋</span> All Tournaments</button>
+  <button class="nav-btn" data-p="add" onclick="nav('add')"><span>➕</span> Add Tournament</button>
+  <div class="nav-div"></div>
+  <span class="nav-sec">Player</span>
+  <button class="nav-btn" data-p="career" onclick="nav('career')"><span>🏆</span> Career Totals</button>
+  <button class="nav-btn" data-p="yearly" onclick="nav('yearly')"><span>📅</span> Yearly Stats</button>
+  <button class="nav-btn" data-p="profile" onclick="nav('profile')"><span>👤</span> Player Profile</button>
+  <div class="nav-div"></div>
+  <span class="nav-sec">Tools</span>
+  <button class="nav-btn" onclick="exportJSON()"><span>💾</span> Export JSON</button>
+  <button class="nav-btn" onclick="qs('#impFile').click()"><span>📥</span> Import JSON</button>
+  <input id="impFile" type="file" accept=".json" style="display:none" onchange="handleImport(event)">
+  <div class="sb-badge">📦 Local · localStorage</div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- PAGE: DASHBOARD -->
+<div class="pg act" id="pg-dashboard">
+  <div class="ph"><h1>All Tournaments</h1><p>All 21 tournaments — click Edit to manage series within a tournament</p></div>
+  <div class="sr">
+    <input class="si" id="dashQ" placeholder="Search tournaments…" oninput="renderDash()">
+    <button class="btn btn-p" onclick="nav('add')">➕ Add Tournament</button>
+  </div>
+  <div id="dashBody"></div>
+</div>
+
+<!-- PAGE: ADD TOURNAMENT -->
+<div class="pg" id="pg-add">
+  <div class="ph"><h1>Add Tournament</h1><p>A tournament requires a name, format, and at least one series with a year</p></div>
+  <div class="card">
+    <div class="ctitle">Tournament Info</div>
+    <div class="g2">
+      <div class="fld full"><label>Tournament Name <span class="req">*</span></label><input id="at_name" placeholder="e.g. Texas Premier League 2027"><div class="emsg">Name is required</div></div>
+      <div class="fld"><label>Format <span class="req">*</span></label>
+        <select id="at_fmt"><option value="">— Select —</option><option>T20</option><option>1 DAY</option><option>YOUTH</option><option>TEST</option><option>League</option></select>
+        <div class="emsg">Format is required</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ctitle">First Series <span style="color:var(--ink3);font-weight:400;text-transform:none;letter-spacing:0">(required — minimum 1 series per tournament)</span></div>
+    <div class="g3">
+      <div class="fld full"><label>Series Name <span class="req">*</span></label><input id="at_sn" placeholder="e.g. 2027 TPL Spring U11"><div class="emsg">Series name required</div></div>
+      <div class="fld"><label>Year <span class="req">*</span></label><input id="at_sy" type="number" min="2020" max="2035" placeholder="2027"><div class="emsg">Year 2020–2035 required</div></div>
+      <div class="fld"><label>Matches <span class="req">*</span></label><input id="at_mat" type="number" min="1" placeholder="1"><div class="emsg">Must be ≥ 1</div></div>
+    </div>
+    <div class="div-label">Batting</div>
+    <div class="g4">
+      <div class="fld"><label>Innings</label><input id="at_inns" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Not Outs</label><input id="at_no" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Runs</label><input id="at_runs" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Balls Faced</label><input id="at_balls" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Highest Score</label><input id="at_hs" type="number" min="0" value="0"></div>
+      <div class="fld"><label>50s</label><input id="at_x50" type="number" min="0" value="0"></div>
+      <div class="fld"><label>25s</label><input id="at_x25" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Ducks</label><input id="at_x0" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Fours</label><input id="at_fours" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Sixes</label><input id="at_sixes" type="number" min="0" value="0"></div>
+    </div>
+    <div class="div-label">Bowling</div>
+    <div class="g4">
+      <div class="fld"><label>Bowl Innings</label><input id="at_bi" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Overs</label><input id="at_ov" placeholder="0.0" value="0.0"></div>
+      <div class="fld"><label>Runs Conceded</label><input id="at_br" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Wickets</label><input id="at_wk" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Best Bowling</label><input id="at_bbf" placeholder="0/0" value="0/0"></div>
+      <div class="fld"><label>Maidens</label><input id="at_mdns" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Economy</label><input id="at_econ" type="number" min="0" step="0.01" value="0"></div>
+      <div class="fld"><label>Wides</label><input id="at_wid" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Catches</label><input id="at_ctch" type="number" min="0" value="0"></div>
+    </div>
+  </div>
+  <div class="brow">
+    <button class="btn btn-p" onclick="saveTournament()">💾 Save Tournament</button>
+    <button class="btn btn-g" onclick="nav('dashboard')">Cancel</button>
+  </div>
+</div>
+
+<!-- PAGE: EDIT TOURNAMENT -->
+<div class="pg" id="pg-edit">
+  <div class="ph"><h1 id="et_h">Edit Tournament</h1><p id="et_sub">Manage formats and series</p></div>
+  <div class="itabs" id="et_tabs"></div>
+  <div id="et_panels"></div>
+  <!-- ADD NEW SERIES -->
+  <div class="card" style="margin-top:1.5rem">
+    <div class="ctitle">Add New Series to this Tournament</div>
+    <div class="g3">
+      <div class="fld"><label>Format <span class="req">*</span></label>
+        <select id="ns_fmt"><option value="">— Select —</option><option>T20</option><option>1 DAY</option><option>YOUTH</option><option>TEST</option><option>League</option></select>
+        <div class="hint">Can be a new format for this tournament</div>
+      </div>
+      <div class="fld"><label>Series Name <span class="req">*</span></label><input id="ns_sn" placeholder="e.g. 2027 DYCL Spring U11"></div>
+      <div class="fld"><label>Year <span class="req">*</span></label><input id="ns_yr" type="number" min="2020" max="2035" placeholder="2027"></div>
+    </div>
+    <div class="g4" style="margin-top:.85rem">
+      <div class="fld"><label>Matches <span class="req">*</span></label><input id="ns_mat" type="number" min="1" value="0"></div>
+      <div class="fld"><label>Innings</label><input id="ns_inns" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Not Outs</label><input id="ns_no" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Runs</label><input id="ns_runs" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Balls</label><input id="ns_balls" type="number" min="0" value="0"></div>
+      <div class="fld"><label>HS</label><input id="ns_hs" type="number" min="0" value="0"></div>
+      <div class="fld"><label>50s</label><input id="ns_x50" type="number" min="0" value="0"></div>
+      <div class="fld"><label>25s</label><input id="ns_x25" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Ducks</label><input id="ns_x0" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Fours</label><input id="ns_fours" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Sixes</label><input id="ns_sixes" type="number" min="0" value="0"></div>
+    </div>
+    <div class="div-label">Bowling</div>
+    <div class="g4">
+      <div class="fld"><label>Bowl Inn</label><input id="ns_bi" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Overs</label><input id="ns_ov" value="0.0"></div>
+      <div class="fld"><label>Runs Conc</label><input id="ns_br" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Wickets</label><input id="ns_wk" type="number" min="0" value="0"></div>
+      <div class="fld"><label>BBF</label><input id="ns_bbf" value="0/0"></div>
+      <div class="fld"><label>Maidens</label><input id="ns_mdns" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Economy</label><input id="ns_econ" type="number" min="0" step="0.01" value="0"></div>
+      <div class="fld"><label>Wides</label><input id="ns_wid" type="number" min="0" value="0"></div>
+      <div class="fld"><label>Catches</label><input id="ns_ctch" type="number" min="0" value="0"></div>
+    </div>
+    <button class="btn btn-b btn-full" style="margin-top:1rem" onclick="addSeries()">➕ Add Series</button>
+  </div>
+</div>
+
+<!-- PAGE: EDIT SERIES -->
+<div class="pg" id="pg-series">
+  <div class="ph"><h1 id="es_h">Edit Series</h1><p id="es_sub"></p></div>
+  <div class="card">
+    <div class="ctitle">Series Details</div>
+    <div class="g3">
+      <div class="fld full"><label>Series Name <span class="req">*</span></label><input id="es_sn"></div>
+      <div class="fld"><label>Year <span class="req">*</span></label><input id="es_yr" type="number" min="2020" max="2035"></div>
+      <div class="fld"><label>Format (read-only)</label><input id="es_fmt" disabled style="opacity:.6"></div>
+    </div>
+    <div class="div-label">Batting</div>
+    <div class="g4">
+      <div class="fld"><label>Matches</label><input id="es_mat" type="number" min="0"></div>
+      <div class="fld"><label>Innings</label><input id="es_inns" type="number" min="0"></div>
+      <div class="fld"><label>Not Outs</label><input id="es_no" type="number" min="0"></div>
+      <div class="fld"><label>Runs</label><input id="es_runs" type="number" min="0"></div>
+      <div class="fld"><label>Balls</label><input id="es_balls" type="number" min="0"></div>
+      <div class="fld"><label>Average</label><input id="es_ave" placeholder="auto or --"></div>
+      <div class="fld"><label>Strike Rate</label><input id="es_sr" placeholder="auto"></div>
+      <div class="fld"><label>HS</label><input id="es_hs" type="number" min="0"></div>
+      <div class="fld"><label>100s</label><input id="es_x100" type="number" min="0"></div>
+      <div class="fld"><label>50s</label><input id="es_x50" type="number" min="0"></div>
+      <div class="fld"><label>25s</label><input id="es_x25" type="number" min="0"></div>
+      <div class="fld"><label>Ducks</label><input id="es_x0" type="number" min="0"></div>
+      <div class="fld"><label>Fours</label><input id="es_fours" type="number" min="0"></div>
+      <div class="fld"><label>Sixes</label><input id="es_sixes" type="number" min="0"></div>
+    </div>
+    <div class="div-label">Bowling</div>
+    <div class="g4">
+      <div class="fld"><label>Bowl Inn</label><input id="es_bi" type="number" min="0"></div>
+      <div class="fld"><label>Overs</label><input id="es_ov"></div>
+      <div class="fld"><label>Runs Conc</label><input id="es_br" type="number" min="0"></div>
+      <div class="fld"><label>Wickets</label><input id="es_wk" type="number" min="0"></div>
+      <div class="fld"><label>BBF</label><input id="es_bbf"></div>
+      <div class="fld"><label>Maidens</label><input id="es_mdns" type="number" min="0"></div>
+      <div class="fld"><label>Economy</label><input id="es_econ" type="number" step="0.01"></div>
+      <div class="fld"><label>Bowl SR</label><input id="es_bsr"></div>
+      <div class="fld"><label>4W</label><input id="es_x4w" type="number" min="0"></div>
+      <div class="fld"><label>5W</label><input id="es_x5w" type="number" min="0"></div>
+      <div class="fld"><label>Wides</label><input id="es_wid" type="number" min="0"></div>
+      <div class="fld"><label>Catches</label><input id="es_ctch" type="number" min="0"></div>
+    </div>
+  </div>
+  <div class="brow">
+    <button class="btn btn-p" onclick="saveSeriesEdit()">💾 Save Series</button>
+    <button class="btn btn-r" onclick="confirmDelSeries()">🗑 Delete</button>
+    <button class="btn btn-g" onclick="backToEdit()">← Back</button>
+  </div>
+</div>
+
+<!-- PAGE: CAREER -->
+<div class="pg" id="pg-career">
+  <div class="ph"><h1>Career Totals</h1><p>Hero counters and career summary. Auto-calculate from all series data.</p></div>
+  <div class="brow" style="margin-bottom:1.5rem">
+    <button class="btn btn-o" onclick="autoCalcCareer()">⚡ Auto-calculate from series</button>
+  </div>
+  <div class="card">
+    <div class="ctitle">Batting</div>
+    <div class="g4">
+      <div class="fld"><label>Matches</label><input id="c_matches" type="number" min="0"></div>
+      <div class="fld"><label>Innings</label><input id="c_innings" type="number" min="0"></div>
+      <div class="fld"><label>Not Outs</label><input id="c_notOuts" type="number" min="0"></div>
+      <div class="fld"><label>Runs</label><input id="c_runs" type="number" min="0"></div>
+      <div class="fld"><label>Balls</label><input id="c_balls" type="number" min="0"></div>
+      <div class="fld"><label>Average</label><input id="c_avg" type="number" step="0.01"></div>
+      <div class="fld"><label>Strike Rate</label><input id="c_sr" type="number" step="0.01"></div>
+      <div class="fld"><label>Highest Score</label><input id="c_hs" type="number" min="0"></div>
+      <div class="fld"><label>50s</label><input id="c_x50" type="number" min="0"></div>
+      <div class="fld"><label>25s</label><input id="c_x25" type="number" min="0"></div>
+      <div class="fld"><label>Ducks</label><input id="c_ducks" type="number" min="0"></div>
+      <div class="fld"><label>Fours</label><input id="c_fours" type="number" min="0"></div>
+      <div class="fld"><label>Sixes</label><input id="c_sixes" type="number" min="0"></div>
+    </div>
+    <div class="div-label">Bowling</div>
+    <div class="g4">
+      <div class="fld"><label>Wickets</label><input id="c_wickets" type="number" min="0"></div>
+      <div class="fld"><label>Overs</label><input id="c_overs"></div>
+      <div class="fld"><label>Runs Conc</label><input id="c_bowlRuns" type="number" min="0"></div>
+      <div class="fld"><label>Economy</label><input id="c_econ" type="number" step="0.01"></div>
+      <div class="fld"><label>Bowl Avg</label><input id="c_bowlAvg" type="number" step="0.01"></div>
+      <div class="fld"><label>Wides</label><input id="c_wides" type="number" min="0"></div>
+      <div class="fld"><label>Catches</label><input id="c_catches" type="number" min="0"></div>
+      <div class="fld"><label>Tournaments</label><input id="c_tournaments" type="number" min="0"></div>
+    </div>
+  </div>
+  <button class="btn btn-p" onclick="saveCareer()">💾 Save Career Totals</button>
+</div>
+
+<!-- PAGE: YEARLY -->
+<div class="pg" id="pg-yearly">
+  <div class="ph"><h1>Yearly Stats</h1><p>2024 / 2025 / 2026 progression data for the Growth chart</p></div>
+  <div class="brow" style="margin-bottom:1.5rem">
+    <button class="btn btn-o" onclick="autoCalcYearly()">⚡ Auto-calculate from series</button>
+    <button class="btn btn-b" onclick="addYear()">➕ Add Year</button>
+  </div>
+  <div id="yearlyBody"></div>
+</div>
+
+<!-- PAGE: PROFILE -->
+<div class="pg" id="pg-profile">
+  <div class="ph"><h1>Player Profile</h1><p>Shown in the portfolio profile section</p></div>
+  <div class="card">
+    <div class="g2">
+      <div class="fld full"><label>Player Name</label><input id="p_name"></div>
+      <div class="fld"><label>CricClubs ID</label><input id="p_ccid"></div>
+      <div class="fld"><label>Current Team</label><input id="p_team"></div>
+      <div class="fld"><label>Playing Role</label><input id="p_role"></div>
+      <div class="fld"><label>Jersey Number</label><input id="p_jersey"></div>
+      <div class="fld"><label>Batting Style</label><input id="p_bstyle"></div>
+      <div class="fld"><label>Bowling Style</label><input id="p_bowlstyle"></div>
+      <div class="fld full"><label>CricClubs URL</label><input id="p_url" type="url"></div>
+    </div>
+  </div>
+  <button class="btn btn-p" onclick="saveProfile()">💾 Save Profile</button>
+</div>
+
+</main>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="overlay hidden" id="confirmModal">
+  <div class="modal">
+    <h3 id="mo_title">Confirm</h3>
+    <p id="mo_msg"></p>
+    <div class="modal-btns">
+      <button class="btn btn-g" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-r" id="mo_ok">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════════════════
+   ADMIN — local-first, localStorage, no Firebase
+   ════════════════════════════════════════════════════════ */
+const K_SERIES  = 'bp_series';
+const K_CAREER  = 'bp_career';
+const K_PROFILE = 'bp_profile';
+const K_YEARLY  = 'bp_yearly';
+
+const qs  = s => document.querySelector(s);
+const qsa = s => [...document.querySelectorAll(s)];
+const uid = () => Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
+
+function load(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } }
+function save(k, v)   { localStorage.setItem(k, JSON.stringify(v)); }
+
+/* ── TOAST ── */
+let _tt;
+function toast(msg, type='ok', ms=3500) {
+  const el = qs('#toast');
+  clearTimeout(_tt);
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  _tt = setTimeout(() => el.className = 'toast', ms);
+}
+
+/* ── NAV ── */
+let _eTname = '';   // tournament being edited
+let _eSid   = '';   // series being edited
+
+function nav(page) {
+  qsa('.pg').forEach(p => p.classList.remove('act'));
+  qsa('.nav-btn[data-p]').forEach(b => b.classList.toggle('act', b.dataset.p === page));
+  qs('#pg-' + page)?.classList.add('act');
+  if (page === 'dashboard') renderDash();
+  if (page === 'career')    loadCareerForm();
+  if (page === 'yearly')    renderYearly();
+  if (page === 'profile')   loadProfileForm();
+  if (page === 'add')       resetAdd();
+}
+
+/* ── MODAL ── */
+function showModal(title, msg, cb) {
+  qs('#mo_title').textContent = title;
+  qs('#mo_msg').textContent   = msg;
+  qs('#confirmModal').classList.remove('hidden');
+  qs('#mo_ok').onclick = () => { closeModal(); cb?.(); };
+}
+function closeModal() { qs('#confirmModal').classList.add('hidden'); }
+
+/* ── HELPERS ── */
+function gv(id)  { return qs('#'+id)?.value?.trim() ?? ''; }
+function gi(id)  { return parseInt(gv(id)) || 0; }
+function gf(id)  { return parseFloat(gv(id)) || 0; }
+function sv(id,v){ const el = qs('#'+id); if (el) el.value = v ?? ''; }
+
+function fmtBadge(f) {
+  const map = {'T20':'ft20','1 DAY':'f1d','YOUTH':'fyo','TEST':'fts','League':'flg','ZERO':'flg'};
+  return `<span class="fb ${map[f]||'flg'}">${f}</span>`;
+}
+
+function oversToD(o) {
+  const p = String(o||'0').split('.');
+  return (parseInt(p[0])||0) + (parseInt(p[1]||0))/6;
+}
+function dToOvers(d) {
+  const full = Math.floor(d);
+  const b    = Math.round((d - full) * 6);
+  return b === 0 ? `${full}.0` : `${full}.${b}`;
+}
+
+function buildBat(pfx) {
+  const mat   = gi(pfx+'mat'), inns = gi(pfx+'inns'), no = gi(pfx+'no');
+  const runs  = gi(pfx+'runs'), balls = gi(pfx+'balls');
+  const denom = inns - no;
+  const ave   = denom > 0 && runs > 0 ? (runs/denom).toFixed(2) : (no >= inns && runs > 0 ? '--' : '—');
+  const sr    = balls > 0 ? (runs/balls*100).toFixed(2) : '—';
+  return { mat, inns, no, runs, balls, ave, sr,
+    hs: gi(pfx+'hs'), x100:0,
+    x50: gi(pfx+'x50'), x25: gi(pfx+'x25'),
+    x0:  gi(pfx+'x0'),  fours: gi(pfx+'fours'), sixes: gi(pfx+'sixes') };
+}
+
+function buildBowl(pfx) {
+  const bowlRuns = gi(pfx+'br'), wkts = gi(pfx+'wk');
+  const oversD   = oversToD(gv(pfx+'ov')||'0.0');
+  return { mat: gi(pfx+'mat')||0, inns: gi(pfx+'bi'),
+    overs: gv(pfx+'ov')||'0.0', bowlRuns, wkts,
+    bbf:  gv(pfx+'bbf')||'0/0', mdns: gi(pfx+'mdns'),
+    bowlAve: wkts > 0 ? (bowlRuns/wkts).toFixed(2) : '—',
+    econ: oversD > 0 ? +(bowlRuns/oversD).toFixed(2) : 0,
+    bowlSR: '—', x4w:0, x5w:0,
+    wides: gi(pfx+'wid'), catches: gi(pfx+'ctch') };
+}
+
+/* ── RECALC AGGREGATE (series_type row) ── */
+function recalcAgg(tName, fmt, silent=false) {
+  let series = load(K_SERIES, []);
+  const rows = series.filter(r => r.tournament === tName && r.format === fmt && r.level === 'series' && r.seriesName !== 'TBD');
+  if (!rows.length) return;
+
+  const b  = {mat:0,inns:0,no:0,runs:0,balls:0,hs:0,x100:0,x50:0,x25:0,x0:0,fours:0,sixes:0};
+  const bw = {inns:0,bowlRuns:0,wkts:0,mdns:0,x4w:0,x5w:0,wides:0,catches:0};
+  let od = 0, bW=0, bR=999, bbf='0/0';
+
+  rows.forEach(r => {
+    const bt = r.batting||{}, bl = r.bowling||{};
+    b.mat+=bt.mat||0; b.inns+=bt.inns||0; b.no+=bt.no||0;
+    b.runs+=bt.runs||0; b.balls+=bt.balls||0;
+    if ((bt.hs||0) > b.hs) b.hs=bt.hs;
+    b.x50+=bt.x50||0; b.x25+=bt.x25||0; b.x0+=bt.x0||0;
+    b.fours+=bt.fours||0; b.sixes+=bt.sixes||0;
+    bw.inns+=bl.inns||0; od+=oversToD(bl.overs||'0.0');
+    bw.bowlRuns+=bl.bowlRuns||0; bw.wkts+=bl.wkts||0;
+    bw.mdns+=bl.mdns||0; bw.wides+=bl.wides||0; bw.catches+=bl.catches||0;
+    if (bl.bbf && bl.bbf!=='0/0') {
+      const [w,r2]=(bl.bbf||'0/0').split('/').map(Number);
+      if (w>bW||(w===bW&&r2<bR)) { bW=w; bR=r2; bbf=bl.bbf; }
+    }
+  });
+
+  const den = b.inns-b.no;
+  b.ave = den>0 ? (b.runs/den).toFixed(2) : '—';
+  b.sr  = b.balls>0 ? (b.runs/b.balls*100).toFixed(2) : '—';
+  const bOv = dToOvers(od);
+  const econ = od>0 ? +(bw.bowlRuns/od).toFixed(2) : 0;
+  const bAve = bw.wkts>0 ? +(bw.bowlRuns/bw.wkts).toFixed(2) : 0;
+
+  const idx = series.findIndex(r => r.tournament===tName && r.format===fmt && r.level==='series_type');
+  if (idx >= 0) {
+    series[idx].batting = b;
+    series[idx].bowling = {...bw, overs:bOv, econ, bowlAve:bAve+'', bbf, bowlSR:'—'};
+  }
+  save(K_SERIES, series);
+  if (!silent) toast('🔄 Aggregate recalculated', 'ok');
+}
+
+/* ═══════════════════════════════════════════════
+   DASHBOARD
+═══════════════════════════════════════════════ */
+function renderDash() {
+  const series = load(K_SERIES, []);
+  const q      = gv('dashQ').toLowerCase();
+  const grp    = {};
+  series.forEach(s => { if (!grp[s.tournament]) grp[s.tournament]=[]; grp[s.tournament].push(s); });
+
+  let names = Object.keys(grp).sort();
+  if (q) names = names.filter(n => n.toLowerCase().includes(q));
+
+  if (!names.length) {
+    qs('#dashBody').innerHTML = `<div class="empty"><div class="ico">🏏</div>
+      ${q ? `No tournaments matching "${q}"` : 'No tournaments yet.'}
+      ${!q ? '<br><button class="btn btn-p" style="margin-top:1rem" onclick="nav(\'add\')">Add First Tournament</button>' : ''}
+    </div>`;
+    return;
+  }
+
+  qs('#dashBody').innerHTML = names.map(tName => {
+    const rows   = grp[tName];
+    const stRows = rows.filter(r => r.level==='series_type');
+    const sRows  = rows.filter(r => r.level==='series' && r.seriesName && r.seriesName!=='TBD');
+    const fmts   = [...new Set(rows.map(r => r.format))];
+    const tMat   = stRows.reduce((s,r) => s+(r.batting?.mat||0), 0);
+    const tRuns  = stRows.reduce((s,r) => s+(r.batting?.runs||0), 0);
+    const tWkts  = stRows.reduce((s,r) => s+(r.bowling?.wkts||0), 0);
+    const tCtch  = stRows.reduce((s,r) => s+(r.bowling?.catches||0), 0);
+    return `<div class="card" style="margin-bottom:.75rem">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">
+        <div style="flex:1">
+          <div style="font-weight:700;margin-bottom:.35rem">${tName}</div>
+          <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.4rem">${fmts.map(fmtBadge).join('')}</div>
+          <div class="spills">
+            <span class="sp"><b>${tMat}</b> mat</span>
+            <span class="sp"><b>${tRuns}</b> runs</span>
+            <span class="sp"><b>${tWkts}</b> wkts</span>
+            <span class="sp"><b>${tCtch}</b> ctch</span>
+            <span class="sp"><b>${sRows.length}</b> series</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:.35rem;flex-shrink:0;align-items:center">
+          <button class="btn btn-b btn-sm" onclick="editTournament('${esc(tName)}')">✏️ Edit</button>
+          <button class="btn btn-r btn-sm" onclick="deleteTournament('${esc(tName)}')">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function esc(s) { return s.replace(/'/g,"\\x27").replace(/"/g,'&quot;'); }
+
+/* ═══════════════════════════════════════════════
+   ADD TOURNAMENT
+═══════════════════════════════════════════════ */
+function resetAdd() {
+  ['at_name','at_sn'].forEach(id => sv(id,''));
+  ['at_fmt'].forEach(id => { const el=qs('#'+id); if(el) el.value=''; });
+  ['at_sy','at_mat','at_inns','at_no','at_runs','at_balls','at_hs','at_x50','at_x25',
+   'at_x0','at_fours','at_sixes','at_bi','at_br','at_wk','at_mdns','at_econ','at_wid','at_ctch']
+    .forEach(id => sv(id,'0'));
+  sv('at_ov','0.0'); sv('at_bbf','0/0');
+  qsa('#pg-add .fld').forEach(f => f.classList.remove('herr'));
+}
+
+function vf(id, ok, msg) {
+  const f = qs('#'+id)?.closest('.fld');
+  const e = f?.querySelector('.emsg');
+  f?.classList.toggle('herr', !ok);
+  if (!ok && e && msg) e.textContent = msg;
+  return ok;
+}
+
+function saveTournament() {
+  const tName = gv('at_name');
+  const fmt   = gv('at_fmt');
+  const sn    = gv('at_sn');
+  const sy    = gi('at_sy');
+  const mat   = gi('at_mat');
+
+  let ok = true;
+  ok = vf('at_name', tName.length>0, 'Name is required') && ok;
+  ok = vf('at_fmt',  fmt.length>0,   'Format is required') && ok;
+  ok = vf('at_sn',   sn.length>0,    'Series name required') && ok;
+  ok = vf('at_sy',   sy>=2020&&sy<=2035, 'Year 2020–2035 required') && ok;
+  ok = vf('at_mat',  mat>=1, 'Matches must be ≥ 1') && ok;
+  if (!ok) { toast('Fix the highlighted fields', 'err'); return; }
+
+  let series = load(K_SERIES, []);
+  if (series.some(s => s.tournament === tName)) {
+    toast(`"${tName}" already exists — use Edit to add series`, 'err'); return;
+  }
+
+  const batting = buildBat('at_');
+  const bowling = buildBowl('at_');
+
+  // series row
+  series.push({ id:uid(), tournament:tName, format:fmt, level:'series', seriesName:sn, year:sy, batting, bowling });
+  // series_type aggregate row
+  series.push({ id:uid(), tournament:tName, format:fmt, level:'series_type', seriesName:'', year:null, batting:{...batting}, bowling:{...bowling} });
+
+  save(K_SERIES, series);
+  toast(`✅ Tournament "${tName}" added`, 'ok');
+  nav('dashboard');
+}
+
+/* ═══════════════════════════════════════════════
+   EDIT TOURNAMENT
+═══════════════════════════════════════════════ */
+function editTournament(tName) {
+  _eTname = tName;
+  qs('#et_h').textContent   = tName;
+  qs('#et_sub').textContent = 'Manage formats and series';
+  renderEditTournament(tName);
+  nav('edit');
+}
+
+function renderEditTournament(tName) {
+  const series = load(K_SERIES, []);
+  const rows   = series.filter(r => r.tournament === tName);
+  const fmts   = [...new Set(rows.map(r => r.format))];
+
+  qs('#et_tabs').innerHTML = fmts.map((f,i) =>
+    `<button class="itab${i===0?' act':''}" onclick="switchFmt('${esc(f)}')" data-fmt="${f}">${f}</button>`
+  ).join('');
+
+  qs('#et_panels').innerHTML = fmts.map((f,i) => {
+    const st  = rows.find(r => r.format===f && r.level==='series_type');
+    const srs = rows.filter(r => r.format===f && r.level==='series' && r.seriesName && r.seriesName!=='TBD');
+    const stHtml = st ? `<div class="spills" style="margin-bottom:.75rem">
+      <span class="sp"><b>${st.batting?.mat||0}</b> mat</span>
+      <span class="sp"><b>${st.batting?.runs||0}</b> runs</span>
+      <span class="sp"><b>${st.batting?.hs||0}</b> HS</span>
+      <span class="sp"><b>${st.batting?.ave||'—'}</b> avg</span>
+      <span class="sp"><b>${st.bowling?.wkts||0}</b> wkts</span>
+      <span class="sp"><b>${st.bowling?.catches||0}</b> ctch</span>
+    </div>
+    <button class="btn btn-g btn-sm" onclick="recalcAgg('${esc(tName)}','${esc(f)}')">🔄 Recalc aggregate</button>` : '';
+
+    const srHtml = srs.length ? srs.map(s => `
+      <div class="srow">
+        <div class="srow-h">
+          <div>
+            <div class="sname">${s.seriesName}</div>
+            <div class="sstats">
+              <span class="sst"><b>${s.batting?.mat||0}</b> mat</span>
+              <span class="sst"><b>${s.batting?.runs||0}</b> runs</span>
+              <span class="sst"><b>${s.batting?.hs||0}</b> HS</span>
+              <span class="sst"><b>${s.batting?.ave||'—'}</b> avg</span>
+              ${s.bowling?.wkts ? `<span class="sst"><b>${s.bowling.wkts}</b> wkts</span>` : ''}
+              ${s.bowling?.catches ? `<span class="sst"><b>${s.bowling.catches}</b> ctch</span>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:.35rem">
+            ${s.year ? `<span class="syear">${s.year}</span>` : ''}
+            <button class="btn btn-b btn-sm" onclick="editSeries('${s.id}')">✏️</button>
+            <button class="btn btn-r btn-sm" onclick="delSeriesById('${s.id}','${esc(s.seriesName)}')">🗑</button>
+          </div>
+        </div>
+      </div>`).join('') :
+      `<div style="color:var(--ink3);font-size:.8rem;padding:.5rem 0">No named series yet</div>`;
+
+    return `<div class="ipanel${i===0?' act':''}" id="fp-${f.replace(' ','_')}">
+      <div class="card"><div class="ctitle">${f} — Aggregate</div>${stHtml}</div>
+      <div class="card"><div class="ctitle">${f} — Series (${srs.length})</div>
+        <div class="slist">${srHtml}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function switchFmt(f) {
+  qsa('#et_tabs .itab').forEach(b => b.classList.toggle('act', b.dataset.fmt===f));
+  qsa('#et_panels .ipanel').forEach(p => p.classList.remove('act'));
+  qs('#fp-'+f.replace(' ','_'))?.classList.add('act');
+}
+
+/* ═══════════════════════════════════════════════
+   ADD SERIES (within edit tournament)
+═══════════════════════════════════════════════ */
+function addSeries() {
+  const tName = _eTname;
+  const fmt   = gv('ns_fmt');
+  const sn    = gv('ns_sn');
+  const sy    = gi('ns_yr');
+  const mat   = gi('ns_mat');
+
+  if (!fmt)          { toast('Format is required', 'err'); return; }
+  if (!sn)           { toast('Series name is required', 'err'); return; }
+  if (sy<2020||sy>2035) { toast('Year must be 2020–2035', 'err'); return; }
+  if (mat < 1)       { toast('Matches must be ≥ 1', 'err'); return; }
+
+  const batting = buildBat('ns_');
+  const bowling = buildBowl('ns_');
+  let series = load(K_SERIES, []);
+
+  series.push({ id:uid(), tournament:tName, format:fmt, level:'series', seriesName:sn, year:sy, batting, bowling });
+
+  // Create aggregate row for new format if needed
+  if (!series.some(r => r.tournament===tName && r.format===fmt && r.level==='series_type')) {
+    series.push({ id:uid(), tournament:tName, format:fmt, level:'series_type', seriesName:'', year:null, batting:{...batting}, bowling:{...bowling} });
+  }
+  save(K_SERIES, series);
+  recalcAgg(tName, fmt, true);
+  renderEditTournament(tName);
+
+  // Reset form
+  ['ns_fmt','ns_sn','ns_yr','ns_mat','ns_inns','ns_no','ns_runs','ns_balls','ns_hs',
+   'ns_x50','ns_x25','ns_x0','ns_fours','ns_sixes','ns_bi','ns_br','ns_wk','ns_mdns',
+   'ns_econ','ns_wid','ns_ctch'].forEach(id => {
+    const el = qs('#'+id); if (!el) return;
+    el.value = el.tagName==='SELECT' ? '' : '0';
+  });
+  sv('ns_ov','0.0'); sv('ns_bbf','0/0');
+  toast(`✅ Series "${sn}" added to ${fmt}`, 'ok');
+}
+
+/* ═══════════════════════════════════════════════
+   EDIT SERIES
+═══════════════════════════════════════════════ */
+function editSeries(id) {
+  _eSid = id;
+  const series = load(K_SERIES, []);
+  const row    = series.find(s => s.id===id);
+  if (!row) { toast('Series not found', 'err'); return; }
+
+  qs('#es_h').textContent   = 'Edit · ' + row.seriesName;
+  qs('#es_sub').textContent = row.tournament + ' · ' + row.format;
+
+  const b = row.batting||{}, bw = row.bowling||{};
+  sv('es_sn',  row.seriesName); sv('es_yr', row.year||'');
+  sv('es_fmt', row.format);
+  sv('es_mat',  b.mat||0);  sv('es_inns', b.inns||0); sv('es_no',    b.no||0);
+  sv('es_runs', b.runs||0); sv('es_balls',b.balls||0); sv('es_ave',  b.ave||'');
+  sv('es_sr',   b.sr||'');  sv('es_hs',   b.hs||0);    sv('es_x100', b.x100||0);
+  sv('es_x50',  b.x50||0);  sv('es_x25',  b.x25||0);   sv('es_x0',   b.x0||0);
+  sv('es_fours',b.fours||0);sv('es_sixes',b.sixes||0);
+  sv('es_bi',  bw.inns||0); sv('es_ov',   bw.overs||'0.0');
+  sv('es_br',  bw.bowlRuns||0); sv('es_wk', bw.wkts||0);
+  sv('es_bbf', bw.bbf||'0/0'); sv('es_mdns',bw.mdns||0);
+  sv('es_econ',bw.econ||0);    sv('es_bsr', bw.bowlSR||'');
+  sv('es_x4w', bw.x4w||0);     sv('es_x5w', bw.x5w||0);
+  sv('es_wid', bw.wides||0);   sv('es_ctch',bw.catches||0);
+  nav('series');
+}
+
+function saveSeriesEdit() {
+  const sn  = gv('es_sn');
+  const yr  = parseInt(gv('es_yr'))||null;
+  if (!sn)            { toast('Series name required', 'err'); return; }
+  if (yr && (yr<2020||yr>2035)) { toast('Year must be 2020–2035', 'err'); return; }
+
+  let series = load(K_SERIES, []);
+  const idx  = series.findIndex(s => s.id===_eSid);
+  if (idx<0) { toast('Series not found', 'err'); return; }
+  const old = series[idx];
+
+  series[idx] = {
+    ...old,
+    seriesName: sn,
+    year: yr,
+    batting: {
+      mat:   gi('es_mat'),  inns: gi('es_inns'), no:   gi('es_no'),
+      runs:  gi('es_runs'), balls:gi('es_balls'), ave:  gv('es_ave')||'—',
+      sr:    gv('es_sr')||'—', hs: gi('es_hs'),   x100: gi('es_x100'),
+      x50:   gi('es_x50'),  x25: gi('es_x25'),  x0:   gi('es_x0'),
+      fours: gi('es_fours'),sixes:gi('es_sixes'),
+    },
+    bowling: {
+      inns:     gi('es_bi'),    overs:    gv('es_ov')||'0.0',
+      bowlRuns: gi('es_br'),    wkts:     gi('es_wk'),
+      bbf:      gv('es_bbf')||'0/0', mdns: gi('es_mdns'),
+      bowlAve:  gv('es_ave')||'—',  econ: gf('es_econ'),
+      bowlSR:   gv('es_bsr')||'—',  x4w:  gi('es_x4w'), x5w: gi('es_x5w'),
+      wides:    gi('es_wid'),   catches:  gi('es_ctch'),
+    },
+  };
+  save(K_SERIES, series);
+  recalcAgg(old.tournament, old.format, true);
+  toast('✅ Series saved', 'ok');
+  backToEdit();
+}
+
+function backToEdit() {
+  const series = load(K_SERIES, []);
+  const tName  = series.find(s => s.id===_eSid)?.tournament || _eTname;
+  _eTname = tName;
+  editTournament(tName);
+}
+
+function confirmDelSeries() {
+  const series = load(K_SERIES, []);
+  const row    = series.find(s => s.id===_eSid);
+  if (!row) return;
+  showModal('Delete Series?', `"${row.seriesName}" will be permanently deleted.`,
+    () => { delSeriesById(_eSid, row.seriesName); nav('edit'); renderEditTournament(_eTname); });
+}
+
+function delSeriesById(id, name) {
+  let series = load(K_SERIES, []);
+  const row  = series.find(s => s.id===id);
+  if (!row)  { toast('Not found', 'err'); return; }
+  series = series.filter(s => s.id !== id);
+  save(K_SERIES, series);
+  recalcAgg(row.tournament, row.format, true);
+  renderEditTournament(_eTname);
+  toast(`🗑 "${name}" deleted`, 'warn');
+}
+
+function deleteTournament(tName) {
+  showModal('Delete Tournament?',
+    `All data for "${tName}" including all formats and series will be permanently deleted.`,
+    () => {
+      let series = load(K_SERIES, []).filter(s => s.tournament !== tName);
+      save(K_SERIES, series);
+      renderDash();
+      toast(`🗑 "${tName}" deleted`, 'warn');
+    });
+}
+
+/* ═══════════════════════════════════════════════
+   CAREER
+═══════════════════════════════════════════════ */
+function loadCareerForm() {
+  const c = load(K_CAREER, {});
+  ['matches','innings','notOuts','runs','balls','avg','sr','hs','x50','x25','ducks',
+   'fours','sixes','wickets','overs','bowlRuns','econ','bowlAvg','wides','catches','tournaments']
+    .forEach(f => sv('c_'+f, c[f]??''));
+}
+
+function saveCareer() {
+  const c = {};
+  ['matches','innings','notOuts','runs','balls','avg','sr','hs','x50','x25','ducks',
+   'fours','sixes','wickets','overs','bowlRuns','econ','bowlAvg','wides','catches','tournaments']
+    .forEach(f => { const v = gv('c_'+f); c[f] = (v==='' || isNaN(+v)) ? v : +v; });
+  save(K_CAREER, c);
+  toast('✅ Career totals saved', 'ok');
+}
+
+function autoCalcCareer() {
+  const rows = load(K_SERIES, []).filter(r => r.level==='series_type' && r.format!=='League');
+  if (!rows.length) { toast('No series data', 'warn'); return; }
+
+  const c = {matches:0,innings:0,notOuts:0,runs:0,balls:0,hs:0,x50:0,x25:0,ducks:0,fours:0,sixes:0,wickets:0,bowlRuns:0,wides:0,catches:0};
+  let od=0; const ts=new Set();
+
+  rows.forEach(r => {
+    const b=r.batting||{}, bw=r.bowling||{};
+    c.matches+=b.mat||0; c.innings+=b.inns||0; c.notOuts+=b.no||0;
+    c.runs+=b.runs||0; c.balls+=b.balls||0;
+    if ((b.hs||0)>c.hs) c.hs=b.hs;
+    c.x50+=b.x50||0; c.x25+=b.x25||0; c.ducks+=b.x0||0;
+    c.fours+=b.fours||0; c.sixes+=b.sixes||0;
+    od+=oversToD(bw.overs||'0.0');
+    c.bowlRuns+=bw.bowlRuns||0; c.wickets+=bw.wkts||0;
+    c.wides+=bw.wides||0; c.catches+=bw.catches||0;
+    ts.add(r.tournament);
+  });
+
+  const den = c.innings - c.notOuts;
+  c.avg  = den>0 ? +(c.runs/den).toFixed(2) : 0;
+  c.sr   = c.balls>0 ? +(c.runs/c.balls*100).toFixed(2) : 0;
+  c.overs   = dToOvers(od);
+  c.econ    = od>0 ? +(c.bowlRuns/od).toFixed(2) : 0;
+  c.bowlAvg = c.wickets>0 ? +(c.bowlRuns/c.wickets).toFixed(2) : 0;
+  c.tournaments = ts.size;
+
+  save(K_CAREER, c);
+  loadCareerForm();
+  toast(`⚡ Career calculated from ${rows.length} format rows`, 'ok');
+}
+
+/* ═══════════════════════════════════════════════
+   YEARLY
+═══════════════════════════════════════════════ */
+function renderYearly() {
+  const yl = load(K_YEARLY, []).sort((a,b) => a.year-b.year);
+  if (!yl.length) {
+    qs('#yearlyBody').innerHTML = `<div class="empty"><div class="ico">📅</div>
+      No yearly data. Click Auto-calculate or Add Year.</div>`;
+    return;
+  }
+  qs('#yearlyBody').innerHTML = yl.map(y => `
+    <div class="card" style="margin-bottom:.85rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <span style="font-family:'Space Grotesk',sans-serif;font-size:1.2rem;font-weight:800;color:var(--gold)">${y.year}</span>
+        <button class="btn btn-r btn-sm" onclick="deleteYear(${y.year})">🗑</button>
+      </div>
+      <div class="spills" style="margin-bottom:.85rem">
+        <span class="sp"><b>${y.mat||0}</b> matches</span>
+        <span class="sp"><b>${y.runs||0}</b> runs</span>
+        <span class="sp"><b>${y.avg||0}</b> avg</span>
+        <span class="sp"><b>${y.sr||0}</b> SR</span>
+        <span class="sp"><b>${y.hs||0}</b> HS</span>
+        <span class="sp"><b>${y.x50||0}</b> 50s</span>
+        <span class="sp"><b>${y.catches||0}</b> ctch</span>
+      </div>
+      <div class="g4">
+        <div class="fld"><label>Matches</label><input id="y${y.year}_mat" type="number" value="${y.mat||0}"></div>
+        <div class="fld"><label>Innings</label><input id="y${y.year}_inns" type="number" value="${y.inns||0}"></div>
+        <div class="fld"><label>Runs</label><input id="y${y.year}_runs" type="number" value="${y.runs||0}"></div>
+        <div class="fld"><label>HS</label><input id="y${y.year}_hs" type="number" value="${y.hs||0}"></div>
+        <div class="fld"><label>Avg</label><input id="y${y.year}_avg" type="number" step="0.01" value="${y.avg||0}"></div>
+        <div class="fld"><label>SR</label><input id="y${y.year}_sr" type="number" step="0.01" value="${y.sr||0}"></div>
+        <div class="fld"><label>50s</label><input id="y${y.year}_x50" type="number" value="${y.x50||0}"></div>
+        <div class="fld"><label>25s</label><input id="y${y.year}_x25" type="number" value="${y.x25||0}"></div>
+        <div class="fld"><label>Fours</label><input id="y${y.year}_fours" type="number" value="${y.fours||0}"></div>
+        <div class="fld"><label>Sixes</label><input id="y${y.year}_sixes" type="number" value="${y.sixes||0}"></div>
+        <div class="fld"><label>Catches</label><input id="y${y.year}_catches" type="number" value="${y.catches||0}"></div>
+        <div class="fld"><label>Wickets</label><input id="y${y.year}_wickets" type="number" value="${y.wickets||0}"></div>
+        <div class="fld"><label>Tournaments</label><input id="y${y.year}_ts" type="number" value="${y.tournaments||0}"></div>
+      </div>
+      <button class="btn btn-p btn-sm" style="margin-top:.75rem" onclick="saveYear(${y.year})">💾 Save ${y.year}</button>
+    </div>`).join('');
+}
+
+function saveYear(yr) {
+  const yl  = load(K_YEARLY, []);
+  const idx = yl.findIndex(y => y.year===yr);
+  const g   = id => parseInt(qs('#y'+yr+'_'+id)?.value)||0;
+  const gfl = id => parseFloat(qs('#y'+yr+'_'+id)?.value)||0;
+  const upd = { year:yr, mat:g('mat'), inns:g('inns'), runs:g('runs'), hs:g('hs'),
+    avg:gfl('avg'), sr:gfl('sr'), x50:g('x50'), x25:g('x25'),
+    fours:g('fours'), sixes:g('sixes'), catches:g('catches'), wickets:g('wickets'),
+    tournaments:g('ts'), tournamentNames: yl[idx]?.tournamentNames||[] };
+  if (idx>=0) yl[idx]=upd; else yl.push(upd);
+  save(K_YEARLY, yl);
+  toast(`✅ ${yr} saved`, 'ok');
+}
+
+function deleteYear(yr) {
+  showModal('Delete Year?', `Delete all ${yr} stats?`,
+    () => { save(K_YEARLY, load(K_YEARLY,[]).filter(y=>y.year!==yr)); renderYearly(); toast(`🗑 ${yr} deleted`,'warn'); });
+}
+
+function addYear() {
+  const yr = parseInt(prompt('Enter year (2020–2035):'));
+  if (!yr||yr<2020||yr>2035) { toast('Invalid year','err'); return; }
+  const yl = load(K_YEARLY,[]);
+  if (yl.some(y=>y.year===yr)) { toast(`${yr} already exists`,'warn'); return; }
+  yl.push({year:yr,mat:0,inns:0,runs:0,hs:0,avg:0,sr:0,x50:0,x25:0,fours:0,sixes:0,catches:0,wickets:0,tournaments:0,tournamentNames:[]});
+  save(K_YEARLY,yl); renderYearly(); toast(`✅ ${yr} added`,'ok');
+}
+
+function autoCalcYearly() {
+  const rows = load(K_SERIES,[]).filter(r => r.level==='series' && typeof r.year==='number' && r.format!=='League');
+  if (!rows.length) { toast('No series data with years','warn'); return; }
+
+  const by = {};
+  rows.forEach(r => {
+    if (!by[r.year]) by[r.year]={mat:0,inns:0,no:0,runs:0,balls:0,hs:0,x50:0,x25:0,x0:0,fours:0,sixes:0,wkts:0,ctch:0,od:0,br:0,ts:new Set()};
+    const y=by[r.year], b=r.batting||{}, bw=r.bowling||{};
+    y.mat+=b.mat||0; y.inns+=b.inns||0; y.no+=b.no||0;
+    y.runs+=b.runs||0; y.balls+=b.balls||0;
+    if((b.hs||0)>y.hs) y.hs=b.hs;
+    y.x50+=b.x50||0; y.x25+=b.x25||0; y.x0+=b.x0||0;
+    y.fours+=b.fours||0; y.sixes+=b.sixes||0;
+    y.od+=oversToD(bw.overs||'0.0'); y.br+=bw.bowlRuns||0;
+    y.wkts+=bw.wkts||0; y.ctch+=bw.catches||0;
+    y.ts.add(r.tournament);
+  });
+
+  const yl = Object.entries(by).map(([yr,y]) => {
+    const den = y.inns-y.no;
+    return { year:parseInt(yr), mat:y.mat, inns:y.inns, no:y.no, runs:y.runs, balls:y.balls, hs:y.hs,
+      avg: den>0 ? +(y.runs/den).toFixed(2) : 0,
+      sr:  y.balls>0 ? +(y.runs/y.balls*100).toFixed(2) : 0,
+      x50:y.x50, x25:y.x25, ducks:y.x0, fours:y.fours, sixes:y.sixes,
+      overs: dToOvers(y.od), bowlRuns:y.br,
+      wickets:y.wkts, econ: y.od>0 ? +(y.br/y.od).toFixed(2) : 0,
+      catches:y.ctch, tournaments:y.ts.size, tournamentNames:[...y.ts].sort() };
+  }).sort((a,b)=>a.year-b.year);
+
+  save(K_YEARLY,yl); renderYearly();
+  toast(`⚡ Yearly calculated for ${yl.length} years`,'ok');
+}
+
+/* ═══════════════════════════════════════════════
+   PROFILE
+═══════════════════════════════════════════════ */
+function loadProfileForm() {
+  const p = load(K_PROFILE,{});
+  sv('p_name',p.name||''); sv('p_ccid',p.cricclubsId||'');
+  sv('p_team',p.team||''); sv('p_role',p.role||'');
+  sv('p_jersey',p.jersey||''); sv('p_bstyle',p.battingStyle||'');
+  sv('p_bowlstyle',p.bowlingStyle||''); sv('p_url',p.cricclubsUrl||'');
+}
+function saveProfile() {
+  save(K_PROFILE,{ name:gv('p_name'), cricclubsId:gv('p_ccid'), team:gv('p_team'),
+    role:gv('p_role'), jersey:gv('p_jersey'), battingStyle:gv('p_bstyle'),
+    bowlingStyle:gv('p_bowlstyle'), cricclubsUrl:gv('p_url') });
+  toast('✅ Profile saved','ok');
+}
+
+/* ═══════════════════════════════════════════════
+   EXPORT / IMPORT
+═══════════════════════════════════════════════ */
+function exportJSON() {
+  const data = { raw_series:load(K_SERIES,[]), career:load(K_CAREER,{}),
+    profile:load(K_PROFILE,{}), yearly:load(K_YEARLY,[]), exported:new Date().toISOString() };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  a.download = 'bhadra-cricket-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  toast('📦 Exported JSON','ok');
+}
+
+function handleImport(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if (d.raw_series) save(K_SERIES, d.raw_series);
+      if (d.career)     save(K_CAREER, d.career);
+      if (d.profile)    save(K_PROFILE, d.profile);
+      if (d.yearly)     save(K_YEARLY, d.yearly);
+      renderDash(); toast('✅ Imported successfully','ok');
+    } catch { toast('❌ Invalid JSON','err'); }
+  };
+  r.readAsText(f); e.target.value='';
+}
+
+/* ═══════════════════════════════════════════════
+   BOOT — seed from data.js if localStorage empty
+═══════════════════════════════════════════════ */
+(async () => {
+  const existing = load(K_SERIES, null);
+  if (!existing || existing.length === 0) {
+    try {
+      const mod = await import('./data.js');
+      save(K_SERIES,  mod.RAW_SERIES.map(s => ({...s, id:uid()})));
+      save(K_CAREER,  mod.CAREER);
+      save(K_PROFILE, mod.PLAYER);
+      save(K_YEARLY,  mod.YEARLY.map(y => ({...y, tournamentNames:y.tournamentNames||[]})));
+      toast(`✅ Loaded from data.js — ${mod.RAW_SERIES.length} series ready`,'ok',4000);
+    } catch {
+      save(K_SERIES,[]); save(K_CAREER,{}); save(K_PROFILE,{}); save(K_YEARLY,[]);
+      toast('⚠️ Starting empty — data.js not found','warn',4000);
+    }
+  }
+  renderDash();
+})();
+</script>
+</body>
+</html>

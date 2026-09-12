@@ -84,3 +84,9 @@ logs/
 .cache/
 local/
 .DS_Store
+
+# ── Seed script artifacts ─────────────────────────────────────────────────────
+sa-key.json           # Firebase Admin SDK service account key
+_seed_data.json       # temporary file created during seeding
+_seed_tmp.mjs         # temporary ES module wrapper created during seeding
+sa-key.json

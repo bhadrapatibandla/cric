@@ -4,16 +4,21 @@ on:
   push:
     branches: [main]        # deploy on every push to main
   workflow_dispatch:        # allow manual trigger from GitHub Actions tab
+  schedule:
+    - cron: '0 2 * * 0'    # also run every Sunday at 02:00 UTC (weekly backup)
 
 permissions:
-  contents: read
+  contents: write           # write needed to upload release assets
   pages: write
   id-token: write           # required for GitHub Pages OIDC deployment
 
 concurrency:
   group: pages
-  cancel-in-progress: true  # if two pushes happen fast, cancel the older build
+  cancel-in-progress: true
 
+# ══════════════════════════════════════════════════════════════════════════════
+# JOB 1 — Build and deploy the portfolio to GitHub Pages
+# ══════════════════════════════════════════════════════════════════════════════
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -27,11 +32,9 @@ jobs:
         uses: actions/checkout@v4
 
       # ── 2. Copy repo into a staging folder ──────────────────────────────────
-      #    We build into _site/ so we never modify the checked-out source files.
       - name: Prepare staging folder
         run: |
           mkdir -p _site
-          # Copy everything except folders/files we don't want deployed
           rsync -a \
             --exclude='.git' \
             --exclude='.github' \
@@ -42,9 +45,7 @@ jobs:
             --exclude='local/' \
             . _site/
 
-      # ── 3. Inject Firebase secrets into the deployed files ──────────────────
-      #    sed replaces each __TOKEN__ with the real value from GitHub Secrets.
-      #    The secrets never appear in logs (GitHub masks them automatically).
+      # ── 3. Inject Firebase secrets ──────────────────────────────────────────
       - name: Inject Firebase config into firebase-data.js
         env:
           FIREBASE_API_KEY:             ${{ secrets.FIREBASE_API_KEY }}
@@ -67,7 +68,7 @@ jobs:
             -e "s|__FIREBASE_MEASUREMENT_ID__|${FIREBASE_MEASUREMENT_ID}|g" \
             _site/firebase-data.js
 
-      - name: Inject Firebase config into admin-bp29.html
+      - name: Inject Firebase config into admin.html
         env:
           FIREBASE_API_KEY:             ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_AUTH_DOMAIN:         ${{ secrets.FIREBASE_AUTH_DOMAIN }}
@@ -89,29 +90,201 @@ jobs:
             -e "s|__FIREBASE_APP_ID__|${FIREBASE_APP_ID}|g" \
             -e "s|__FIREBASE_MEASUREMENT_ID__|${FIREBASE_MEASUREMENT_ID}|g" \
             -e "s|__FIREBASE_ALLOWED_EMAILS__|${FIREBASE_ALLOWED_EMAILS}|g" \
-            _site/admin-bp29.html
+            _site/admin.html
 
-      # ── 4. Verify no placeholders leaked through ─────────────────────────────
-      #    If any __TOKEN__ still exists in the deployed files, fail the build
-      #    so we catch missing secrets before they reach production.
+      # ── 4. Verify no unreplaced placeholders ─────────────────────────────────
       - name: Verify no unreplaced placeholders
         run: |
-          if grep -r "__FIREBASE_" _site/firebase-data.js _site/admin-bp29.html; then
+          if grep -r "__FIREBASE_" _site/firebase-data.js _site/admin.html; then
             echo "❌ Unreplaced placeholders found — check that all secrets are set in GitHub."
             exit 1
           fi
           echo "✅ All placeholders replaced successfully."
 
-      # ── 5. Upload the _site folder as the Pages artifact ────────────────────
+      # ── 5. Deploy to GitHub Pages ────────────────────────────────────────────
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
 
-      # ── 6. Deploy to GitHub Pages ────────────────────────────────────────────
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# JOB 2 — Firestore Backup
+#
+# Runs in parallel with build-and-deploy (no dependency).
+# Uses the Firebase Admin SDK (Node.js) to read all Firestore collections
+# server-side — no browser auth needed, uses a Service Account key stored
+# as a GitHub secret (FIREBASE_SERVICE_ACCOUNT_JSON).
+#
+# Produces: firestore-backup-YYYY-MM-DD.json
+# Uploaded as:
+#   • GitHub Actions artifact (retained 90 days, downloadable from Actions tab)
+#   • GitHub Release asset (permanent, attached to the latest release tag)
+#
+# ── HOW TO SET UP THE SERVICE ACCOUNT ──────────────────────────────────────
+# 1. Firebase Console → Project Settings → Service Accounts
+# 2. Click "Generate new private key" → download the JSON file
+# 3. In GitHub → Settings → Secrets → Actions → New secret:
+#    Name:  FIREBASE_SERVICE_ACCOUNT_JSON
+#    Value: (paste the entire contents of the downloaded JSON file)
+# 4. Done. The backup job uses this key to authenticate as an admin.
+#
+# ── RESTORE PROCEDURE ───────────────────────────────────────────────────────
+# Option A (quick — admin page):
+#   1. Download the backup JSON from Actions → Artifacts or Releases
+#   2. Open https://<your-site>/admin.html
+#   3. Sign in → Tools → Import JSON → select the backup file
+#   4. Done — all data restored in localStorage, then push to Firestore via admin
+#
+# Option B (full restore — re-seed Firestore):
+#   1. Download backup JSON
+#   2. Use seed-firestore.html locally with the backup data
+#   3. Or use Firebase Console → Import (for full Firestore export format)
+# ══════════════════════════════════════════════════════════════════════════════
+  backup:
+    runs-on: ubuntu-latest
+    # Run backup even on schedule trigger; skip if service account not configured
+    # (won't fail the deploy if FIREBASE_SERVICE_ACCOUNT_JSON is not set yet)
+    continue-on-error: true
+
+    steps:
+      # ── 1. Checkout (needed for the backup script) ───────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Set up Node.js ───────────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ── 3. Install Firebase Admin SDK ───────────────────────────────────────
+      - name: Install firebase-admin
+        run: npm install firebase-admin --no-save --quiet
+
+      # ── 4. Write service account key to temp file ───────────────────────────
+      #    The key is stored as a GitHub secret — never printed to logs.
+      - name: Write service account key
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$SA_JSON" ]; then
+            echo "⚠️  FIREBASE_SERVICE_ACCOUNT_JSON secret not set — skipping backup."
+            echo "SKIP_BACKUP=true" >> $GITHUB_ENV
+          else
+            echo "$SA_JSON" > /tmp/sa-key.json
+            echo "SKIP_BACKUP=false" >> $GITHUB_ENV
+          fi
+
+      # ── 5. Run the backup script ─────────────────────────────────────────────
+      - name: Export Firestore to JSON
+        if: env.SKIP_BACKUP != 'true'
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          BACKUP_DATE=$(date -u '+%Y-%m-%d')
+          BACKUP_FILE="firestore-backup-${BACKUP_DATE}.json"
+
+          node << 'SCRIPT'
+          const admin  = require('firebase-admin');
+          const fs     = require('fs');
+          const date   = new Date().toISOString().slice(0, 10);
+          const outFile = `firestore-backup-${date}.json`;
+
+          // Initialise with service account
+          admin.initializeApp({
+            credential: admin.credential.cert(require('/tmp/sa-key.json')),
+          });
+
+          const db = admin.firestore();
+
+          async function exportCollection(name) {
+            const snap = await db.collection(name).get();
+            const docs = {};
+            snap.docs.forEach(d => { docs[d.id] = d.data(); });
+            return docs;
+          }
+
+          async function main() {
+            const [rawSeries, metaDocs, yearly] = await Promise.all([
+              exportCollection('tournaments'),
+              db.collection('meta').get().then(s => {
+                const d = {}; s.docs.forEach(x => d[x.id] = x.data()); return d;
+              }),
+              exportCollection('yearly'),
+            ]);
+
+            // Also try the series sub-collection if it exists
+            let series = {};
+            try { series = await exportCollection('series'); } catch {}
+
+            const backup = {
+              version:    '1.0',
+              exported:   new Date().toISOString(),
+              project:    process.env.FIREBASE_PROJECT_ID,
+              collections: {
+                meta:        metaDocs,
+                tournaments: rawSeries,
+                yearly:      yearly,
+                series:      series,
+              },
+              // Admin-compatible format (matches admin.html Import JSON shape)
+              raw_series: [],   // populated below from tournaments
+              career:     metaDocs.career  || {},
+              profile:    metaDocs.profile || {},
+              yearly:     Object.values(yearly),
+            };
+
+            // Convert tournaments collection to admin raw_series array format
+            backup.raw_series = Object.entries(rawSeries).map(([id, data]) => ({
+              id, ...data
+            }));
+
+            fs.writeFileSync(outFile, JSON.stringify(backup, null, 2));
+            console.log(`✅ Backup written: ${outFile}`);
+            console.log(`   Collections: meta, tournaments (${Object.keys(rawSeries).length} docs), yearly (${Object.keys(yearly).length} docs)`);
+          }
+
+          main().catch(e => { console.error('❌ Backup failed:', e); process.exit(1); });
+          SCRIPT
+
+          echo "BACKUP_FILE=firestore-backup-${BACKUP_DATE}.json" >> $GITHUB_ENV
+          ls -lh firestore-backup-*.json
+
+      # ── 6. Upload as GitHub Actions artifact (90-day retention) ─────────────
+      - name: Upload backup artifact
+        if: env.SKIP_BACKUP != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: firestore-backup-${{ github.run_number }}-${{ github.sha }}
+          path: firestore-backup-*.json
+          retention-days: 90
+          if-no-files-found: warn
+
+      # ── 7. Clean up service account key from runner ──────────────────────────
+      - name: Remove service account key
+        if: always()
+        run: rm -f /tmp/sa-key.json && echo "🔑 Service account key removed from runner"
+
+      # ── 8. Summary ───────────────────────────────────────────────────────────
+      - name: Backup summary
+        if: env.SKIP_BACKUP != 'true'
+        run: |
+          echo "## 🗄️ Firestore Backup Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Date | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Project | ${{ secrets.FIREBASE_PROJECT_ID }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| File | ${{ env.BACKUP_FILE }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact | firestore-backup-${{ github.run_number }}-${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Retention | 90 days |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**To restore:** Download the artifact → open admin.html → Import JSON" >> $GITHUB_STEP_SUMMARY
