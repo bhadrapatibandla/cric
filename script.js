@@ -3,8 +3,11 @@
    ============================================================ */
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
+// CAREER and TOURNAMENTS are populated at runtime by firebase-data.js via the
+// 'firestoreReady' event. The values below are the static fallback — used if
+// Firestore is unreachable (network offline, Firebase config not yet set, etc.).
 
-const CAREER = {
+let CAREER = {
   matches: 176, runs: 2223, wickets: 13, catches: 48,
   avg: 24.43, sr: 65.69, hs: 90, fifties: 8, twentyFives: 21, ducks: 15,
   fours: 180, sixes: 1, overs: '109.1', econ: 5.96, bowlAvg: 50.08,
@@ -23,8 +26,8 @@ const PROFILE = [
   { label: 'Tournament Span','value': '2024 – 2026' },
 ];
 
-// Tournament summary — one row per tournament (source: Tournament Summary sheet)
-const TOURNAMENTS = [
+// Tournament summary — populated from Firestore; static values are fallback only
+let TOURNAMENTS = [
   { name: 'Dallas Youth Cricket League (DYCL Official)', matches:12,  runs:197,  avg:21.89, sr:59.34, hs:87, wkts:0, econ:9.00, catches:10, fifties:1, format:'YOUTH/1DAY' },
   { name: 'Cricket of San Antonio',                      matches:48,  runs:391,  avg:13.96, sr:48.94, hs:50, wkts:6, econ:6.75, catches:8,  fifties:1, format:'1DAY/T20'   },
   { name: 'Houston Taped Ball Cricket',                  matches:2,   runs:8,    avg:null,  sr:42.11, hs:8,  wkts:0, econ:null, catches:0,  fifties:0, format:'T20'         },
@@ -47,9 +50,8 @@ const TOURNAMENTS = [
   { name: 'Houston Invitational Tournament (HIT)',       matches:4,   runs:59,   avg:29.50, sr:69.41, hs:20, wkts:0, econ:1.50, catches:2,  fifties:0, format:'T20'         },
 ];
 
-// Yearly progression — source: Raw Batting/Bowling Series sheets, aggregated by year
-// Only rows with explicit year tags are counted (no null-year aggregates)
-const YEARLY_STATS = [
+// Yearly progression — populated from Firestore; static values are fallback only
+let YEARLY_STATS = [
   {
     year: 2024, matches: 22, innings: 18,
     notOuts: 7,  runs: 207,  balls: 356,
@@ -238,8 +240,12 @@ function countUp(el, target, duration = 1800) {
 }
 
 function initCountUps() {
+  // Values come from Firestore (via CAREER global) or static fallback
   const pairs = [
-    ['c1', 176], ['c2', 2223], ['c3', 48], ['c4', 20]
+    ['c1', CAREER.matches     || 176],
+    ['c2', CAREER.runs        || 2223],
+    ['c3', CAREER.catches     || 48],
+    ['c4', CAREER.tournaments || 20],
   ];
   const io = new IntersectionObserver(entries => {
     entries.forEach(e => {
@@ -349,9 +355,10 @@ const INSIGHTS = {
   radar:   `<strong>All-Round Profile:</strong> Radar shows Bhadra's strengths across 5 key dimensions benchmarked against U11 peer standards. Batting average (24.43 vs 15 benchmark), wicket-keeping (48 catches), highest score (90), run volume (2,223), and wickets (13) all contribute to a well-rounded junior profile.`,
 };
 
-const ACTIVE_TOURS = TOURNAMENTS.filter(t => t.matches > 0);
-
 function buildChart(type) {
+  // Derived at call-time so it reflects the live TOURNAMENTS global
+  const ACTIVE_TOURS = TOURNAMENTS.filter(t => t.matches > 0);
+
   const ctx = document.getElementById('mainChart').getContext('2d');
   if (mainChart) { mainChart.destroy(); mainChart = null; }
 
@@ -931,8 +938,12 @@ function initFooter() {
 }
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
+// firebase-data.js (loaded as a module in index.html) fetches Firestore and
+// dispatches 'firestoreReady' on document. We wait for that before rendering.
+// If Firestore is not configured yet (placeholder config), firebase-data.js
+// fires the event with ok:false and we fall through to the static data above.
 
-document.addEventListener('DOMContentLoaded', () => {
+function bootSite() {
   initCanvas();
   initNav();
   initCountUps();
@@ -943,7 +954,27 @@ document.addEventListener('DOMContentLoaded', () => {
   initStats();
   renderProfile();
   initFooter();
-
-  // Stagger fade-up on overview cards
   setTimeout(initFadeUp, 200);
+}
+
+document.addEventListener('firestoreReady', (e) => {
+  if (e.detail && e.detail.ok) {
+    // Merge live Firestore data into our globals
+    if (e.detail.career)      CAREER      = e.detail.career;
+    if (e.detail.tournaments) TOURNAMENTS = e.detail.tournaments;
+    if (e.detail.yearly)      YEARLY_STATS = e.detail.yearly;
+  }
+  // Whether data came from Firestore or the static fallback, boot the site
+  bootSite();
 });
+
+// Safety net: if firebase-data.js fails to load at all (e.g. no network,
+// script blocked), boot with static data after 4 seconds
+let _booted = false;
+document.addEventListener('firestoreReady', () => { _booted = true; });
+setTimeout(() => {
+  if (!_booted) {
+    console.warn('[script.js] firestoreReady never fired — booting with static data');
+    bootSite();
+  }
+}, 4000);

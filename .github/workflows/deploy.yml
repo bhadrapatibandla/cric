@@ -1,0 +1,117 @@
+name: Deploy Portfolio to GitHub Pages
+
+on:
+  push:
+    branches: [main]        # deploy on every push to main
+  workflow_dispatch:        # allow manual trigger from GitHub Actions tab
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write           # required for GitHub Pages OIDC deployment
+
+concurrency:
+  group: pages
+  cancel-in-progress: true  # if two pushes happen fast, cancel the older build
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      # ── 1. Checkout source code ─────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Copy repo into a staging folder ──────────────────────────────────
+      #    We build into _site/ so we never modify the checked-out source files.
+      - name: Prepare staging folder
+        run: |
+          mkdir -p _site
+          # Copy everything except folders/files we don't want deployed
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='_site' \
+            --exclude='.env.local' \
+            --exclude='inject-env-seed.js' \
+            --exclude='seed-firestore.local.html' \
+            --exclude='local/' \
+            . _site/
+
+      # ── 3. Inject Firebase secrets into the deployed files ──────────────────
+      #    sed replaces each __TOKEN__ with the real value from GitHub Secrets.
+      #    The secrets never appear in logs (GitHub masks them automatically).
+      - name: Inject Firebase config into firebase-data.js
+        env:
+          FIREBASE_API_KEY:             ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN:         ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_DATABASE_URL:        ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_PROJECT_ID:          ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_STORAGE_BUCKET:      ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_APP_ID:              ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_MEASUREMENT_ID:      ${{ secrets.FIREBASE_MEASUREMENT_ID }}
+        run: |
+          sed -i \
+            -e "s|__FIREBASE_API_KEY__|${FIREBASE_API_KEY}|g" \
+            -e "s|__FIREBASE_AUTH_DOMAIN__|${FIREBASE_AUTH_DOMAIN}|g" \
+            -e "s|__FIREBASE_DATABASE_URL__|${FIREBASE_DATABASE_URL}|g" \
+            -e "s|__FIREBASE_PROJECT_ID__|${FIREBASE_PROJECT_ID}|g" \
+            -e "s|__FIREBASE_STORAGE_BUCKET__|${FIREBASE_STORAGE_BUCKET}|g" \
+            -e "s|__FIREBASE_MESSAGING_SENDER_ID__|${FIREBASE_MESSAGING_SENDER_ID}|g" \
+            -e "s|__FIREBASE_APP_ID__|${FIREBASE_APP_ID}|g" \
+            -e "s|__FIREBASE_MEASUREMENT_ID__|${FIREBASE_MEASUREMENT_ID}|g" \
+            _site/firebase-data.js
+
+      - name: Inject Firebase config into admin-bp29.html
+        env:
+          FIREBASE_API_KEY:             ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN:         ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_DATABASE_URL:        ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_PROJECT_ID:          ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_STORAGE_BUCKET:      ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_APP_ID:              ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_MEASUREMENT_ID:      ${{ secrets.FIREBASE_MEASUREMENT_ID }}
+          FIREBASE_ALLOWED_EMAILS:      ${{ secrets.FIREBASE_ALLOWED_EMAILS }}
+        run: |
+          sed -i \
+            -e "s|__FIREBASE_API_KEY__|${FIREBASE_API_KEY}|g" \
+            -e "s|__FIREBASE_AUTH_DOMAIN__|${FIREBASE_AUTH_DOMAIN}|g" \
+            -e "s|__FIREBASE_DATABASE_URL__|${FIREBASE_DATABASE_URL}|g" \
+            -e "s|__FIREBASE_PROJECT_ID__|${FIREBASE_PROJECT_ID}|g" \
+            -e "s|__FIREBASE_STORAGE_BUCKET__|${FIREBASE_STORAGE_BUCKET}|g" \
+            -e "s|__FIREBASE_MESSAGING_SENDER_ID__|${FIREBASE_MESSAGING_SENDER_ID}|g" \
+            -e "s|__FIREBASE_APP_ID__|${FIREBASE_APP_ID}|g" \
+            -e "s|__FIREBASE_MEASUREMENT_ID__|${FIREBASE_MEASUREMENT_ID}|g" \
+            -e "s|__FIREBASE_ALLOWED_EMAILS__|${FIREBASE_ALLOWED_EMAILS}|g" \
+            _site/admin-bp29.html
+
+      # ── 4. Verify no placeholders leaked through ─────────────────────────────
+      #    If any __TOKEN__ still exists in the deployed files, fail the build
+      #    so we catch missing secrets before they reach production.
+      - name: Verify no unreplaced placeholders
+        run: |
+          if grep -r "__FIREBASE_" _site/firebase-data.js _site/admin-bp29.html; then
+            echo "❌ Unreplaced placeholders found — check that all secrets are set in GitHub."
+            exit 1
+          fi
+          echo "✅ All placeholders replaced successfully."
+
+      # ── 5. Upload the _site folder as the Pages artifact ────────────────────
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      # ── 6. Deploy to GitHub Pages ────────────────────────────────────────────
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

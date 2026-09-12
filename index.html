@@ -337,6 +337,8 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <!-- firebase-data.js fetches Firestore and fires 'firestoreReady' before script.js renders -->
+  <script type="module" src="firebase-data.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
