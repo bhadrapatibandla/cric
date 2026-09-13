@@ -1,6 +1,6 @@
 # Bhadra Patibandla — Cricket Portfolio
 
-A fully animated, data-driven cricket portfolio for **Bhadra Patibandla** — Wicket Keeper, Right Hand Batter (Top Order), Right Arm Leg Spin. Jersey #29, SanAntonio Road Runners.
+A fully animated, data-driven cricket portfolio for **Bhadra Patibandla** — Wicket Keeper, Right Hand Batter (Top Order), Right Arm Leg Spin. Jersey #29, SanAntonio Road Runners. test
 
 Live at: **https://bhadrapatibandla.github.io/cric/**
 
