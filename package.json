@@ -4,9 +4,9 @@
   "description": "Bhadra Patibandla Cricket Portfolio",
   "private": true,
   "scripts": {
-    "seed": "node inject-env-seed.js",
+    "seed":     "node inject-env-seed.js",
     "seed:dry": "node inject-env-seed.js --dry-run",
-    "serve": "npx serve . -p 5555"
+    "serve":    "npx serve . -p 5555"
   },
   "devDependencies": {
     "firebase-admin": "^14.4.0"
