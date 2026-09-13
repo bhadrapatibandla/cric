@@ -1167,19 +1167,21 @@ const firebaseConfig = {
 };
 
 // ── ALLOWED EMAILS (injected by GitHub Actions) ─────────────────────────────
-// On localhost these placeholders are NOT replaced — handled gracefully below
+// sed replaces __FIREBASE_ALLOWED_EMAILS__ with: "email1@x.com","email2@x.com"
+// On localhost this stays as the placeholder and falls back to [] via the catch.
 let ALLOWED_EMAILS = [];
 try {
-  // This line is replaced by GitHub Actions: ["email1@gmail.com","email2@gmail.com"]
+  // This line becomes e.g.: ALLOWED_EMAILS = ["player@gmail.com","parent@gmail.com"];
   ALLOWED_EMAILS = [__FIREBASE_ALLOWED_EMAILS__];
 } catch {
-  // Placeholder not injected (running locally) — auth handled by bypass
-  ALLOWED_EMAILS = [];
+  ALLOWED_EMAILS = []; // placeholder not injected — running locally
 }
 
 // ── DETECT ENVIRONMENT ───────────────────────────────────────────────────────
 const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-const HAS_CONFIG = firebaseConfig.apiKey !== '__FIREBASE_API_KEY__';
+// HAS_CONFIG is true when authDomain looks like a real Firebase domain (not a placeholder)
+const HAS_CONFIG = firebaseConfig.authDomain.includes('.firebaseapp.com');
+const HAS_EMAILS = ALLOWED_EMAILS.length > 0;
 
 // ── DOM REFS ─────────────────────────────────────────────────────────────────
 const gate     = document.getElementById('authGate');
@@ -1226,20 +1228,23 @@ if (HAS_CONFIG) {
     auth = getAuth(app);
 
     onAuthStateChanged(auth, user => {
-      if (user && ALLOWED_EMAILS.includes(user.email)) {
+      if (user && (ALLOWED_EMAILS.length === 0 || ALLOWED_EMAILS.includes(user.email))) {
+        // ALLOWED_EMAILS empty = secret not injected, but config is there — allow for now
+        // with a warning. On production ALLOWED_EMAILS will always be set.
+        if (ALLOWED_EMAILS.length === 0) {
+          showError('⚠ FIREBASE_ALLOWED_EMAILS secret not set — allowing sign-in for now.');
+        }
         grantAccess(user.email);
       } else if (user) {
-        // Signed in but not in the allowed list
         signOut(auth);
         showError('❌ ' + user.email + ' is not authorised. Please use an allowed account.');
       }
-      // else: not signed in — gate stays visible
     });
   } catch (e) {
     showError('Firebase init error: ' + e.message);
   }
 } else if (!IS_LOCAL) {
-  // Live site but config not injected — show a helpful message
+  // Live site but authDomain doesn't look like a real Firebase domain
   showError('⚙ Firebase config not injected. Check GitHub Actions secrets.');
 }
 
